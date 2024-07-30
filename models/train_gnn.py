@@ -77,6 +77,11 @@ def train_and_predict(train_data, val_data, test_data, n_features, device, epoch
     positive_val_edges = val_data.edge_label_index[:, val_data.edge_label == 1].cpu().numpy()
     positive_test_edges = test_data.edge_label_index[:, test_data.edge_label == 1].cpu().numpy()
 
+    del model
+    del optimizer
+    del criterion
+
+
     return {"train_graph": G,
             "test_predictions": test_predictions,
             "test_labels": test_label,

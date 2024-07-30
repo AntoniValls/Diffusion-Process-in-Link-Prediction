@@ -52,3 +52,5 @@ if __name__=='__main__':
 
     with open(outname, 'wb') as f:
         pickle.dump(result, f)
+
+    torch.cuda.empty_cache()
