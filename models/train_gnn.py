@@ -1,4 +1,4 @@
-from gcn import Net
+from models.gcn import Net
 import torch
 import os.path as osp
 
