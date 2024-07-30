@@ -5,7 +5,7 @@ import torch
 import torch_geometric.transforms as T
 from torch_geometric.datasets import Planetoid
 import argparse
-from models.train_gnn import train_and_predict
+from ..models.train_gnn import train_and_predict
 from torch_geometric import seed_everything
 
 if __name__=='__main__':
