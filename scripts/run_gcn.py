@@ -47,8 +47,8 @@ if __name__=='__main__':
 
     output_dir = 'data/results/gcn'
     os.makedirs(output_dir, exist_ok=True)
-    file_name = f"cora_seed_{args.seed}"
-    outname = osp.join(output_dir, file_name, "pkl")
+    file_name = f"cora_seed_{args.seed}.pkl"
+    outname = osp.join(output_dir, file_name)
 
     with open(outname, 'wb') as f:
         pickle.dump(result, f)
