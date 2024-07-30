@@ -75,7 +75,10 @@ def train_and_predict(train_data, val_data, test_data, n_features, device, epoch
     test_label = test_data.edge_label.cpu().numpy()
     G = to_networkx(train_data, to_undirected=True)
     positive_val_edges = val_data.edge_label_index[:, val_data.edge_label == 1].cpu().numpy()
-    positive_test_edges = test_data.edge_label_index[:, test_data.edge_label == 1].cpu().numpy()
+    #TODO: We need the edge indices also for the negative ones, I'm stupid!
+    #positive_test_edges = test_data.edge_label_index[:, test_data.edge_label == 1].cpu().numpy()
+    all_test_edges = test_data.edge_label_index.cpu().numpy()
+
 
     del model
     del optimizer
@@ -86,4 +89,4 @@ def train_and_predict(train_data, val_data, test_data, n_features, device, epoch
             "test_predictions": test_predictions,
             "test_labels": test_label,
             "val_edges": positive_val_edges,
-            "test_edges": positive_test_edges}
+            "test_edges": all_test_edges}
