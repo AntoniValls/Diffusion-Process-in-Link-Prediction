@@ -54,6 +54,19 @@ def read_prediction_files(model_name, data_name):
     return return_list
 
 
+def calculate_gini(x):
+    # Mean absolute difference
+    mad = np.abs(np.subtract.outer(x, x)).mean()
+    # Relative mean absolute difference
+    if np.mean(x) == 0:
+        return 0
+    else:
+        rmad = mad/np.mean(x)
+        # Gini coefficient
+        g = 0.5 * rmad
+        return g
+
+
 class Evaluate:
 
     def __init__(self, result):
@@ -134,5 +147,27 @@ class Evaluate:
 
         return pd.DataFrame(group_scores)
 
+    def evaluate_graph(self, method, *args, **kwargs):
+        self.get_centrality(method, *args, **kwargs)
+        #this gives you a centrality for the train graph
+        # get centrality for the true graph
+        # get centrality for the predicted graph;
+        self.add_predicted_edges()
+        self.add_real_edges()
 
-# now we need to do this across the different splits!
+        return_dict = {"train_gini": calculate_gini(np.array(self.node_df["centrality"]))}
+
+        names = ["test_true_gini", "test_pred_gini"]
+
+        for counter, graph in enumerate([self.G_pred, self.G_true]):
+            node_centrality = method(graph, *args, **kwargs)
+            node_df = pd.DataFrame(list(node_centrality.items()), columns=['node_index', 'centrality'])
+            gini = calculate_gini(np.array(node_df["centrality"]))
+            return_dict[names[counter]] = gini
+
+        return return_dict
+
+
+
+# problem: centrality might take a long time;
+
