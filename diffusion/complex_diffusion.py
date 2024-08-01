@@ -1,5 +1,8 @@
 import networkx as nx
 import numpy as np
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
+
 """
 Script to caculate complex path lengths and complex centrality as in
 'Topological measures for identifying and predicting the spread of complex contagions' from Guilbeault and Centola
@@ -137,3 +140,27 @@ def get_complex_path(G, T):
 
     return complex_paths
 
+
+def process_node(node, G, T):
+    infected_nodes = complex_contagion(G, T=T, source_node=node)
+    if infected_nodes:
+        sub = G.subgraph(infected_nodes)
+        paths = nx.single_source_shortest_path_length(sub, source=node)
+        len_sum = sum(paths.values())
+        size_closed_neighorhood = len(list(G.neighbors(node))) + 1
+        avg_len = len_sum / (len(G) - size_closed_neighorhood)
+    else:
+        avg_len = 0
+
+    return node, avg_len
+
+def paralell_complex_path(G, T, num_workers=None):
+    complex_paths = {}
+    num_workers = num_workers or multiprocessing.cpu_count()
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        futures = {executor.submit(process_node, node, G, T): node for node in G.nodes}
+        for future in as_completed(futures):
+            node, avg_len = future.result()
+            complex_paths[node] = avg_len
+
+    return complex_paths
