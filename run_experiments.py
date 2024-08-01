@@ -16,8 +16,20 @@
 # # Experiments
 #
 # Notebook for running experiments. 
-# So far its only one model and one dataset. Ideally we find a good structure to include more datasets and more models. 
+# - Model: GCN (probably different scripts for other models, like GAT)
+# - Data: All datatypes in `torch_geometric.datasets` supported (theoretically)
+#     - Planetoid: Cora
+#     - AttributedGraphDataset: Facebook
+#     - LastFMAsia
+#     - Twitch: EN, PT
 #
+# - Epochs: only 150, could be more and earlystopping on validation AUC which probably is not best practice but so far no early stopping
+# - Seeds: Run Model across 10 different seeds.
+#
+#
+# Notes: 
+# - Some weird behaviour in Twitch + LastFMAsia, metrics sometimes not ideal, or only go up very late..
+# - Twitch: Scores go down? 
 
 # %load_ext autoreload
 
@@ -30,19 +42,22 @@ import subprocess
 import os
 script_path = "scripts/run_gcn.py"
 EPOCHS = 150
+TGM_TYPE = "Twitch"
+NAME = "PT"
 project_root = os.path.abspath('')
 env = os.environ.copy()
 env['PYTHONPATH'] = project_root + os.pathsep + env.get('PYTHONPATH', '')
 
 for seed in range(10):
-    result = subprocess.run(['python', script_path, '--seed', str(seed), '--epochs', str(EPOCHS)], capture_output=True, text=True,
+    result = subprocess.run(['python', script_path, '--tgm_type', str(TGM_TYPE), '--name', str(NAME), 
+                             '--seed', str(seed), '--epochs', str(EPOCHS)], capture_output=True, text=True,
                            env=env, cwd=project_root)
     if result.stdout:
         print("Output:", result.stdout)
     if result.stderr:
         print("Error:", result.stderr)
 
-    
+
 # -
 
 # !pwd
