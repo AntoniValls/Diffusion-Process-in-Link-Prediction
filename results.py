@@ -17,19 +17,68 @@
 
 # %autoreload 2
 
-from utils.evaluation import read_prediction_files, Evaluate
-from diffusion.complex_diffusion import get_complex_path
-from functools import partial
-import networkx as nx
-#partial_method = partial(get_complex_path, T=2)
-partial_method = partial(nx.degree_centrality)
-results = read_prediction_files(model_name="gcn", data_name="cora")
-score_list = []
-for file in results:
-    evaluater = Evaluate(file)
-    data = evaluater.evaluate_group(groups=4, method=partial_method)
-    score_list.append(data)
+# +
+import os
 
-score_list[1] 
+num_cores = os.cpu_count()
+print(f"Number of CPU cores: {num_cores}")
+# -
+
+# ### Paralell version
+
+# +
+from utils.evaluation import read_prediction_files, Evaluate
+from diffusion.complex_diffusion import get_complex_path, paralell_complex_path
+from functools import partial
+from diffusion.jackson_metrics import diffusion_centrality, Godfather
+from tqdm import tqdm
+import networkx as nx
+
+def return_diffusion_centrality(graph, T):
+    centrality = diffusion_centrality(G=graph, T=T)
+    node_centrality_dict = {node: centrality[i] for i, node in enumerate(graph.nodes)}
+    return node_centrality_dict
+
+def return_godfather_centrality(graph):
+    centrality = Godfather(graph)
+    node_centrality_dict = {node: centrality[i] for i, node in enumerate(graph.nodes)}
+    return node_centrality_dict
+    
+    
+#partial_method = partial(return_diffusion_centrality, T=4)
+partial_method = partial(nx.degree_centrality)
+
+results = read_prediction_files(model_name="gcn", data_name="Facebook")
+score_list = []
+for file in tqdm(results):
+    evaluater = Evaluate(file)
+    #data = evaluater.evaluate_group(groups=4, method=partial_method)
+    data = evaluater.evaluate_group_links(method=partial_method)
+    score_list.append(data)
+# -
+
+import pandas as pd
+df = pd.concat(score_list)
+mean_df = df.groupby('group').mean().reset_index()
+std_df = df.groupby('group').std(ddof=0).reset_index()
 
 # Add statistics for groups such as avg degree and avg centrality...
+
+mean_df
+
+graph_metrics = []
+for file in tqdm(results):
+    evaluater = Evaluate(file)
+    data = evaluater.evaluate_graph(method=partial_method)
+    graph_metrics.append(data)
+
+pd.DataFrame(graph_metrics).mean()
+
+a = results[0]["test_edges"]
+for i in range(a.shape[1]):
+    node1, node2 = a[:, i]
+    print(node1, node2)
+        
+
+
+a.shape
