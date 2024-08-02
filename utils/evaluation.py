@@ -122,7 +122,8 @@ class Evaluate:
         intra_group_1_indices = []
         intra_group_2_indices = []
 
-        for i, (node1, node2) in enumerate(self.test_edges):
+        for i in range(self.test_edges.shape[1]):
+            node1, node2 = self.test_edges[:, i]
             if node1 in group1 and node2 in group1:
                 intra_group_1_indices.append(i)
             elif node1 in group2 and node2 in group2:
