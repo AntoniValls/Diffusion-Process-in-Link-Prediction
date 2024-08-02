@@ -185,9 +185,15 @@ class Evaluate:
 
         low_intra, high_intra, inter = self.get_inter_intra_group_indices(group_1, group_2)
 
+        groups = {
+            "low_intra": low_intra,
+            "high_intra": high_intra,
+            "inter": inter
+        }
+
         group_scores = []
-        for group in [low_intra, high_intra, inter]:
-            scores = self.get_group_scores(indices=group, group=f"{group}")
+        for group_name, group in groups.items():
+            scores = self.get_group_scores(indices=group, group=group_name)
             if scores:
                 scores["support"] = len(group)
                 group_scores.append(scores)
