@@ -10,6 +10,12 @@ from sklearn.metrics import roc_auc_score, f1_score, recall_score, precision_sco
 # from torch_geometric.metrics import LinkPredPrecision, LinkPredRecall, LinkPredF1
 # no idea how above works??
 
+"""
+Script for evaluating the predictions. The classes below are not the best structure. One thing I could do however, 
+is make the Evaluate class more abstract and then for each method (groups, inter-group links and whole graph) write a children 
+class. 
+"""
+
 
 def search_files(directory: str, pattern: str = '.') -> list:
     """
@@ -107,15 +113,34 @@ class Evaluate:
         self.node_df["group"] = pd.qcut(self.node_df['centrality'], q=groups, labels=False)
         # TODO: check cutting criteria
 
+    def get_mean_groups(self):
+        mean_centrality = self.node_df["centrality"].mean()
+        self.node_df["group"] = self.node_df["centrality"].apply(lambda x: 1 if x > mean_centrality else 0)
+
+    def get_inter_intra_group_indices(self, group1, group2):
+        inter_group_indices = []
+        intra_group_1_indices = []
+        intra_group_2_indices = []
+
+        for i, (node1, node2) in enumerate(self.test_edges):
+            if node1 in group1 and node2 in group1:
+                intra_group_1_indices.append(i)
+            elif node1 in group2 and node2 in group2:
+                intra_group_2_indices.append(i)
+            elif (node1 in group1 and node2 in group2) or (node1 in group2 and node2 in group1):
+                inter_group_indices.append(i)
+
+        return intra_group_1_indices, intra_group_2_indices,  inter_group_indices
+
     def get_group_indices(self, list_of_nodes):
 
         mask = np.isin(self.test_edges, list_of_nodes)
         indices = np.where(mask.any(axis=0))[0]
         return indices
 
-    def get_group_scores(self, list_of_nodes, group):
+    def get_group_scores(self, indices, group):
         # TODO: add scores at k
-        indices = self.get_group_indices(list_of_nodes=list_of_nodes)
+        # TODO: support should be number of links and not number of nodes
         true = self.test_labels[indices]
         pred = self.test_predictions[indices]
         pred_classes = np.where(pred >= 0.5, 1, 0)
@@ -125,8 +150,8 @@ class Evaluate:
                            "f1": f1_score(y_true=true, y_pred=pred_classes),
                            "recall": recall_score(y_true=true, y_pred=pred_classes),
                            "precision": precision_score(y_true=true, y_pred=pred_classes),
-                           "accuracy": accuracy_score(y_true=true, y_pred=pred_classes),
-                           "support": len(list_of_nodes)}
+                           "accuracy": accuracy_score(y_true=true, y_pred=pred_classes)
+                           }
 
             return return_dict
         else:
@@ -141,18 +166,37 @@ class Evaluate:
         # get the different groups and according nodes
         for group in range(groups):
             nodes = list(self.node_df["node_index"][self.node_df["group"] == group])
-            scores = self.get_group_scores(list_of_nodes=nodes, group=group)
+            indices = self.get_group_indices(list_of_nodes=nodes)
+            scores = self.get_group_scores(indices=indices, group=group)
             if scores:
+                scores["support"] = len(nodes)
+                group_scores.append(scores)
+
+        return pd.DataFrame(group_scores)
+
+    def evaluate_group_links(self, method, *args, **kwargs):
+        if not self.node_df:
+            self.get_centrality(method, *args, **kwargs)
+        self.get_mean_groups()
+
+        group_1 = list(self.node_df["node_index"][self.node_df["group"] == 0])
+        group_2 = list(self.node_df["node_index"][self.node_df["group"] == 1])
+
+        low_intra, high_intra, inter = self.get_inter_intra_group_indices(group_1, group_2)
+
+        group_scores = []
+        for group in [low_intra, high_intra, inter]:
+            scores = self.get_group_scores(indices=group, group=f"{group}")
+            if scores:
+                scores["support"] = len(group)
                 group_scores.append(scores)
 
         return pd.DataFrame(group_scores)
 
     def evaluate_graph(self, method, *args, **kwargs):
-        #TODO: write a check to see if its already there
-        self.get_centrality(method, *args, **kwargs)
-        #this gives you a centrality for the train graph
-        # get centrality for the true graph
-        # get centrality for the predicted graph;
+        #TODO adjust for precalculated scores
+        if not self.node_df:
+            self.get_centrality(method, *args, **kwargs)
         self.add_predicted_edges()
         self.add_real_edges()
 

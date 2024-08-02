@@ -85,11 +85,12 @@ def complex_path_length(G, T):
 
 def complex_contagion(graph, T, source_node):
     """
-    Runs a complex contagion from a source with homogenous treshold;
-    :param graph:
-    :param T:
-    :param source_node:
-    :return:
+    Runs a complex contagion from a source with homogenous treshold.
+    Maybe not the most efficient? Given that we only act in local neighborhoods?
+    :param graph: Input Graph
+    :param T: Threshold for Adoption. The same for all nodes
+    :param source_node: The source node from which to start the process. Will infect all neighbors
+    :return: List of infected nodes
     """
     #infect all neighbors
 
