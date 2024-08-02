@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
-
+from tqdm import tqdm
 """
 Script to caculate complex path lengths and complex centrality as in
 'Topological measures for identifying and predicting the spread of complex contagions' from Guilbeault and Centola
@@ -142,6 +142,7 @@ def get_complex_path(G, T):
 
 
 def process_node(node, G, T):
+    # TODO: check if there is a mistake with calculating the shortest path to neighborhood also;
     infected_nodes = complex_contagion(G, T=T, source_node=node)
     if infected_nodes:
         sub = G.subgraph(infected_nodes)
@@ -154,12 +155,14 @@ def process_node(node, G, T):
 
     return node, avg_len
 
+
 def paralell_complex_path(G, T, num_workers=None):
     complex_paths = {}
     num_workers = num_workers or multiprocessing.cpu_count()
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = {executor.submit(process_node, node, G, T): node for node in G.nodes}
-        for future in as_completed(futures):
+        total_futures = len(futures)
+        for future in tqdm(as_completed(futures), total=total_futures):
             node, avg_len = future.result()
             complex_paths[node] = avg_len
 

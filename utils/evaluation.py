@@ -134,8 +134,8 @@ class Evaluate:
             return None
 
     def evaluate_group(self, groups, method, *args, **kwargs):
-
-        self.get_centrality(method, *args, **kwargs)
+        if not self.node_df:
+            self.get_centrality(method, *args, **kwargs)
         self.get_groups(groups)
         group_scores = []
         # get the different groups and according nodes
@@ -148,6 +148,7 @@ class Evaluate:
         return pd.DataFrame(group_scores)
 
     def evaluate_graph(self, method, *args, **kwargs):
+        #TODO: write a check to see if its already there
         self.get_centrality(method, *args, **kwargs)
         #this gives you a centrality for the train graph
         # get centrality for the true graph
@@ -168,6 +169,50 @@ class Evaluate:
         return return_dict
 
 
+class EvaluateCentrality(Evaluate):
+    def __init__(self, result):
+        super().__init__(result)
 
-# problem: centrality might take a long time;
+    def make_graphs(self, validation=False):
+
+        self.add_predicted_edges()
+        self.add_real_edges(add_validation=validation)
+
+    def flex_centrality(self, graph, method,  *args, **kwargs):
+
+        node_centrality = method(graph, *args, **kwargs)
+        node_df = pd.DataFrame(list(node_centrality.items()), columns=['node_index', 'centrality'])
+
+        return node_df
+
+    def write_centrality_to_disk(self, name, path, method, *args, **kwargs):
+
+        self.make_graphs()
+        names = ["train", "test_true", "test_pred"]
+        data_list = []
+        for counter, graph in enumerate([self.graph, self.G_true, self.G_pred]):
+
+            centrality_df = self.flex_centrality(graph=graph, method=method, *args, **kwargs)
+
+            data_list.append(centrality_df)
+            #name = f"{names[counter]}_{name}"
+
+            #save_path = osp.join(path, name)
+
+        name = f"all_{name}"
+        save_path = osp.join(path, name)
+
+        with open(save_path, 'wb') as f:
+            pickle.dump(data_list, f)
+
+
+
+
+
+
+
+
+
+
+
 
