@@ -176,7 +176,7 @@ class Evaluate:
         return pd.DataFrame(group_scores)
 
     def evaluate_group_links(self, method, *args, **kwargs):
-        if not self.node_df:
+        if self.node_df is None or self.node_df.empty:
             self.get_centrality(method, *args, **kwargs)
         self.get_mean_groups()
 
