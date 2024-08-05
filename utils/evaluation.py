@@ -202,7 +202,7 @@ class Evaluate:
 
     def evaluate_graph(self, method, *args, **kwargs):
         #TODO adjust for precalculated scores
-        if not self.node_df:
+        if self.node_df is None or self.node_df.empty:
             self.get_centrality(method, *args, **kwargs)
         self.add_predicted_edges()
         self.add_real_edges()
