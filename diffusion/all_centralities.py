@@ -8,6 +8,8 @@ from diffusion.jackson_metrics import decay_centrality, diffusion_centrality, Go
 from diffusion.complex_diffusion import get_complex_path, paralell_complex_path
 import os
 import json
+import pandas as pd
+
 
 class CentralityMeasures:
     '''
@@ -61,7 +63,11 @@ class CentralityMeasures:
     def calculate_parallel_complex_path(self):
         self.parallel_complex_path = paralell_complex_path(self.G, self.threshold)
         return self.parallel_complex_path
-        
+
+    def calculate_any_centrality(self, method, *args, **kwargs):
+        node_centrality = method(self.G, *args, **kwargs)
+        return node_centrality
+
     def visualize_centralities(self):
         '''
         Visualitzation of each centrality by coloring the nodes.
