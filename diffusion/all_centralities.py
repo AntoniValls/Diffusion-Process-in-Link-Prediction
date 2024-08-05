@@ -23,7 +23,7 @@ class CentralityMeasures:
 
         # Obtaing the graph object
         self.dataset = data_loader(self.tgm_type, self.name, self.transform)
-        self.G = tg.utils.to_networkx(self.dataset[0])
+        self.G = tg.utils.to_networkx(self.dataset[0], to_undirected=True)
         
         self.degree_centrality = None
         self.betweenness_centrality = None
