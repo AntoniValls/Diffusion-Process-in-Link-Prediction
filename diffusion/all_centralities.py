@@ -15,14 +15,11 @@ class CentralityMeasures:
     '''
     This object computes the centrality measures of any graph from the torch_geometric library
     '''
-    def __init__(self, tgm_type, name, p, T, threshold, transform=None):
+    def __init__(self, tgm_type, name, transform=None):
 
         self.tgm_type = tgm_type
         self.name = name
         self.transform = transform
-        self.p = p
-        self.T = T
-        self.threshold = threshold
 
         # Obtaing the graph object
         self.dataset = data_loader(self.tgm_type, self.name, self.transform)
@@ -44,29 +41,37 @@ class CentralityMeasures:
         self.betweenness_centrality = nx.betweenness_centrality(self.G)
         return self.betweenness_centrality
         
-    def calculate_decay_centrality(self):
-        self.decay_centrality = decay_centrality(self.G, self.p, self.T)
+    def calculate_decay_centrality(self, p, T):
+        self.decay_centrality = decay_centrality(self.G, p=p, T=T)
         return self.decay_centrality
         
-    def calculate_diffusion_centrality(self):
-        self.diffusion_centrality = diffusion_centrality(self.G, self.T)
+    def calculate_diffusion_centrality(self, T):
+        self.diffusion_centrality = diffusion_centrality(self.G, T=T)
         return self.diffusion_centrality
         
     def calculate_godfather(self):
         self.godfather = Godfather(self.G)
         return self.godfather
         
-    def calculate_complex_path(self):
-        self.complex_path = get_complex_path(self.G, self.threshold)
+    def calculate_complex_path(self, treshold):
+        self.complex_path = get_complex_path(self.G, treshold)
         return self.complex_path
         
-    def calculate_parallel_complex_path(self):
-        self.parallel_complex_path = paralell_complex_path(self.G, self.threshold)
+    def calculate_parallel_complex_path(self, treshold):
+        self.parallel_complex_path = paralell_complex_path(self.G, treshold)
         return self.parallel_complex_path
 
     def calculate_any_centrality(self, method, *args, **kwargs):
         node_centrality = method(self.G, *args, **kwargs)
         return node_centrality
+
+    def get_degree_dist(self):
+        degseq = [v for k, v in self.G.degree()]
+        dmax = max(degseq) + 1
+        freq = [0 for d in range(dmax)]
+        for d in degseq:
+            freq[d] += 1
+        return freq
 
     def visualize_centralities(self):
         '''
@@ -152,13 +157,13 @@ def run_all_centralities(tgm_type, name, p, T, threshold, transform=None):
     '''
     Run all the measures
     '''
-    cm = CentralityMeasures(tgm_type, name, p, T, threshold, transform=None)
+    cm = CentralityMeasures(tgm_type, name, transform=transform)
     cm.calculate_degree_centrality()
     cm.calculate_betweenness_centrality()
-    cm.calculate_decay_centrality()
-    cm.calculate_diffusion_centrality()
+    cm.calculate_decay_centrality(p=p, T=T)
+    cm.calculate_diffusion_centrality(T=T)
     # cm.calculate_godfather() #correct Godfather to make it faster
     # cm.calculate_complex_path()
-    cm.calculate_parallel_complex_path()
+    cm.calculate_parallel_complex_path(threshold=threshold)
     cm.save_centralities()
     return
