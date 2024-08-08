@@ -6,6 +6,7 @@ from tqdm import tqdm
 Script about the centrality mesures from Jackson et. al. 2020
 '''
 
+
 def decay_centrality(G, p, T):
 
     centrality = {} 
@@ -13,6 +14,7 @@ def decay_centrality(G, p, T):
         centrality[i] = sum(p**l * len(nx.single_source_shortest_path_length(G, i, cutoff=l)) for l in range(1, T+1))
         
     return centrality
+
 
 def communication_centrality(G, T):
     '''
@@ -35,25 +37,48 @@ def communication_centrality(G, T):
     
     return centrality
 
-def diffusion_centrality(G, T):
 
+def get_first_eigenval(A):
+    """
+    A function to return the inverse of the first eigenvalue of adjancency matrix G
+    :param A: Adjacency matrix
+    :return q: Inverse of first eigenvalue
+    """
+    e_val, e_vec = np.linalg.eig(g)
+    q = 1 / e_val[0].real
+    return q
+
+
+
+def diffusion_centrality(G, T):
+    """
+    Updated version of diffusion centrality as in Banerjee 2013. We set q to be the inverse of
+    the first eigenvalue of the adjacency matrix. As T approaches infinity, proportial to eigenvector centrality
+
+
+    :param G: input Graph
+    :param T: Number of Iterations
+    :return:
+    """
     n = len(G.nodes)
     
     # Get the adjacency matrix
-    P = nx.adjacency_matrix(G)
-    P = P.todense()
+    A = nx.to_numpy_array(G)
 
-    centrality = np.zeros(n)
-    
-    # Compute p^l for l = 1 to T and accumulate the walks
-    p_power = np.eye(n)  
-    for l in tqdm(range(1, T + 1), desc="Diffusion centrality:"):
-        p_power = np.matmul(p_power, P)  # Compute p^l
-        centrality += np.sum(p_power, axis=1)  # Sum over j
+    result_sum = np.zeros_like(A)
+
+    q = get_first_eigenval(A)
+
+    ones = np.ones((A.shape[0]))
+    for t in tqdm(range(1, T + 1), desc="Diffusion centrality:"):
+        result_sum += np.linalg.matrix_power(q * A, t)
+
+    centrality = np.dot(result_sum, ones)
 
     centrality_dict = {node: centrality[i] for i, node in enumerate(G.nodes)}
     
     return centrality_dict
+
 
 def Godfather(G):
     
@@ -96,3 +121,12 @@ def Godfather(G):
 #     godfather_index_dict = {node: godfather_index[i] for i, node in enumerate(G.nodes)}
 
 #     return godfather_index_dict
+
+def bla_diffusion_centrality(g, t, q):
+    '''
+    g = adjacency matrix
+    t = iterations
+    q = probability
+    '''
+    arg1 = sum([(q * np.array(g)) ** i for i in range(1, t + 1)])
+    return np.dot(arg1, np.ones(arg1.shape[0]))
