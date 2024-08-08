@@ -69,7 +69,7 @@ def diffusion_centrality(G, T):
 
     q = get_first_eigenval(A)
 
-    ones = np.ones((A.shape[0]))
+    ones = np.ones(A.shape[0])
     for t in tqdm(range(1, T + 1), desc="Diffusion centrality:"):
         result_sum += np.linalg.matrix_power(q * A, t)
 
