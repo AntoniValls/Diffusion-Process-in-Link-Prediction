@@ -38,14 +38,27 @@ def communication_centrality(G, T):
     return centrality
 
 
-def get_first_eigenval(A):
+def largest_eigenvalue(A):
+    eigenvalues = np.linalg.eigvals(A)  # L.A returns the adjacency matrix as a NumPy array
+    return max(eigenvalues.real)
+
+
+def get_first_eigenval(A, max_eigen=True):
     """
     A function to return the inverse of the first eigenvalue of adjancency matrix G
     :param A: Adjacency matrix
     :return q: Inverse of first eigenvalue
     """
-    e_val, e_vec = np.linalg.eig(g)
-    q = 1 / e_val[0].real
+    eigenvalues = np.linalg.eigvals(A)
+
+    if max_eigen:
+        lambda_1 = max(eigenvalues.real)
+    else:
+        lambda_1 = eigenvalues[0].real
+
+
+    q = 1 / lambda_1
+
     return q
 
 
@@ -54,6 +67,8 @@ def diffusion_centrality(G, T):
     """
     Updated version of diffusion centrality as in Banerjee 2013. We set q to be the inverse of
     the first eigenvalue of the adjacency matrix. As T approaches infinity, proportial to eigenvector centrality
+    But as communication is not finite, diffusion centrality might better capture the importance of nodes
+    Problem: Is it the first eigenvalue or the largest eigenvalue?
 
 
     :param G: input Graph
