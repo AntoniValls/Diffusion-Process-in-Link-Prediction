@@ -162,7 +162,7 @@ def run_all_centralities(tgm_type, name, p, T, threshold, transform=None):
     cm.calculate_betweenness_centrality()
     cm.calculate_decay_centrality(p=p, T=T)
     cm.calculate_diffusion_centrality(T=T)
-    # cm.calculate_godfather() #correct Godfather to make it faster
+    # cm.calculate_godfather() # has to be improved
     # cm.calculate_complex_path()
     cm.calculate_parallel_complex_path(threshold=threshold)
     cm.save_centralities()

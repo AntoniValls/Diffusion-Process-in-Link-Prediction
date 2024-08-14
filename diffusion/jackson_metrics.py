@@ -96,46 +96,40 @@ def diffusion_centrality(G, T):
 
 
 def Godfather(G):
+
+    '''
+    Godfather Index function for undirected and unweighted graphs
+    '''
     
     n = len(G.nodes)
     
     # Get the adjacency matrix
-    g = nx.adjacency_matrix(G)
-    g = g.todense()
+    g = nx.adjacency_matrix(G).todense()
     
     # Initialize Godfather index array
     godfather_index = np.zeros(n)
     
-    # Compute the Godfather index for each node i
-    for i in tqdm(range(n), "Godfather index:"):
-        for j in range(n):
-            for k in range(j + 1, n):
-                if g[k, j] == 0 and g[j, k] == 0:
-                    godfather_index[i] += g[k, i] * g[j, i]                    
+    # # Compute the Godfather index for each node i
+    # for i in tqdm(range(n), "Godfather index:"):
+    #     for j in range(n):
+    #         for k in range(j + 1, n):
+    #             godfather_index[i] += g[i, k] * g[i, j] * (1 - g[k, j])
+        
+    # godfather_index_dict = {node: godfather_index[i] for i, node in enumerate(G.nodes)}
 
+    for i in tqdm(range(n), "Godfather index:"):
+        # Column vector g_i (connections of node i to others)
+        g_i = g[i, :]
+        
+        # Compute g_i * (1 - g) for all k,j
+        g_complement = np.outer(g_i, g_i) * (1 - g)
+        
+        # Sum over k > j (upper triangle without diagonal)
+        godfather_index[i] = np.sum(np.triu(g_complement, k=1))
+        
     godfather_index_dict = {node: godfather_index[i] for i, node in enumerate(G.nodes)}
 
     return godfather_index_dict
-
-    #TODO: make it less efficient
-    
-# def Godfather(G):
-#     n = len(G.nodes)
-    
-#     # Get the adjacency matrix
-#     g = nx.adjacency_matrix(G).todense()
-    
-#     # Initialize Godfather index array
-#     godfather_index = np.zeros(n)
-    
-#     # Compute the Godfather index for each node i
-#     for i in tqdm(range(n), "Godfather index_corr:"):
-#         # Use broadcasting and vectorized operations
-#         godfather_index[i] = np.sum((g[:, i] * g.T[:, i]) * (1 - g) * (1 - g.T))
-
-#     godfather_index_dict = {node: godfather_index[i] for i, node in enumerate(G.nodes)}
-
-#     return godfather_index_dict
 
 def bla_diffusion_centrality(g, t, q):
     '''
