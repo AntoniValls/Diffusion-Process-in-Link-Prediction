@@ -69,6 +69,8 @@ def diffusion_centrality(G, T):
     the first eigenvalue of the adjacency matrix. As T approaches infinity, proportial to eigenvector centrality
     But as communication is not finite, diffusion centrality might better capture the importance of nodes
     Problem: Is it the first eigenvalue or the largest eigenvalue?
+    Also in another paper they suggest that T should be equal to the diameter of the graph (longest shortest path)
+    as this gurantees some desirable properties
 
 
     :param G: input Graph

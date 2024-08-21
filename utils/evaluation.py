@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score, f1_score, recall_score, precision_score, accuracy_score
 # from torch_geometric.metrics import LinkPredPrecision, LinkPredRecall, LinkPredF1
 # no idea how above works??
-
+from utils.metrics import vcmpr
 """
 Script for evaluating the predictions. The classes below are not the best structure. One thing I could do however, 
 is make the Evaluate class more abstract and then for each method (groups, inter-group links and whole graph) write a children 
@@ -72,10 +72,15 @@ def calculate_gini(x):
         g = 0.5 * rmad
         return g
 
+def compute_centralities(graph):
+    eigen = nx.eigenvector_centrality_numpy(graph)
+    degree = nx.degree_centrality(G)
+    diffusion = dif
+
 
 class Evaluate:
 
-    def __init__(self, result):
+    def __init__(self, result: object) -> object:
         self.node_df = None
         self.G_true = None
         self.G_pred = None
@@ -256,6 +261,74 @@ class EvaluateCentrality(Evaluate):
         with open(save_path, 'wb') as f:
             pickle.dump(data_list, f)
 
+
+class EvaluateNode(Evaluate):
+    def __init__(self, result):
+        super().__init__(result)
+
+    def get_centrality_df(self, list_of_methods, method_names, train=True):
+
+        results = []
+        if train:
+            G = self.graph
+        else:
+            G = self.G_true
+
+        for method in list_of_methods:
+            results.append(method(G))
+
+        df = pd.DataFrame(results).T
+
+        df.columns = method_names
+        # normalize with sd
+        df = df / df.std()
+
+        return df.reset_index(names="node_index")
+
+    def score_df(self, k):
+
+        score = vcmpr(G_test=self.G_true, edges=self.test_edges,
+                      labels=self.test_labels, predictions=self.test_predictions,
+                      k=k)
+        score_df = pd.DataFrame(list(score.items()), columns=["node_index", f"vcmpr{k}"])
+
+        return score_df
+
+    def final_result(self, list_of_methods, method_names, k, train=True):
+        self.add_real_edges()
+        centrality_df = self.get_centrality_df(list_of_methods=list_of_methods,
+                                               method_names=method_names, train=train)
+        score_df = self.score_df(k=k)
+
+        return pd.merge(score_df, centrality_df, how="left")
+
+
+def evaluate_dataset(model_name, data_name, method_list, method_names):
+
+    files = read_prediction_files(model_name=model_name, data_name=data_name)
+
+    data_list = []
+    for file in files:
+        evaluater = EvaluateNode(result=file)
+        data_list.append(evaluater.final_result(list_of_methods=method_list,
+                                                method_names=method_names, k=10))
+
+    result = pd.concat(data_list).groupby("node_index").mean().reset_index()
+
+    result["dataset"] = data_name
+
+    return result
+
+
+def evaluate_all(model_name, list_of_data, method_list, method_names):
+
+    final_list = []
+    for data in list_of_data:
+        result = evaluate_dataset(model_name=model_name, data_name=data, method_list=method_list,
+                                  method_names=method_names)
+        final_list.append(result)
+
+    return final_list
 
 
 

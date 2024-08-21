@@ -3,7 +3,7 @@ from sklearn.metrics import roc_auc_score
 
 import torch_geometric.transforms as T
 from torch_geometric.datasets import Planetoid
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GATConv, SuperGATConv
 from torch_geometric.utils import negative_sampling
 
 class Net(torch.nn.Module):
@@ -22,5 +22,19 @@ class Net(torch.nn.Module):
     def decode_all(self, z):
         prob_adj = z @ z.t()
         return (prob_adj > 0).nonzero(as_tuple=False).t()
+
+
+class GATNet(Net):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super.__init__()
+        self.conv1 = GATConv(in_channels, hidden_channels)
+        self.conv2 = GATConv(hidden_channels, out_channels)
+
+
+class SuperGATNet(Net):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super.__init__()
+        self.conv1 = SuperGATNet(in_channels, hidden_channels)
+        self.conv2 = SuperGATNet(hidden_channels, out_channels)
 
 
