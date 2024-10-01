@@ -48,13 +48,11 @@ def return_godfather_centrality(graph):
 #partial_method = partial(return_diffusion_centrality, T=4)
 partial_method = partial(nx.degree_centrality)
 
-results = read_prediction_files(model_name="gcn", data_name="Facebook")
+results = read_prediction_files(model_name="gcn", data_name="EN")
 score_list = []
 for file in tqdm(results):
-    evaluater = Evaluate(file)
-    #data = evaluater.evaluate_group(groups=4, method=partial_method)
-    data = evaluater.evaluate_group_links(method=partial_method)
-    score_list.append(data)
+    G = file["train_graph"]
+    print(nx.degree_assortativity_coefficient(G))
 # -
 
 import pandas as pd
@@ -78,7 +76,7 @@ a = results[0]["test_edges"]
 for i in range(a.shape[1]):
     node1, node2 = a[:, i]
     print(node1, node2)
-        
+
 
 
 a.shape

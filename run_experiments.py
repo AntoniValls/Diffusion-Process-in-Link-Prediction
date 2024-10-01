@@ -42,7 +42,7 @@ import subprocess
 import os
 script_path = "scripts/run_gcn.py"
 EPOCHS = 150
-TGM_TYPE = "Twitch"
+TGM_TYPE = "Attributed"
 NAME = "PT"
 project_root = os.path.abspath('')
 env = os.environ.copy()
