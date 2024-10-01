@@ -32,5 +32,29 @@ result = evaluate_all(model_name="gcn", list_of_data=data_names,
                       method_list=[eigen, degree, diffusion], 
                       method_names=names)
 # -
+import pandas as pd
+result_df = pd.concat(result)
+
+result_df.groupby("dataset")["vcmpr10"].mean()
+
+# +
+import pickle
+
+with open("vcmpr10.pkl", "wb") as out:
+    e = pickle.dump(result_df, out)
+
+# +
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.scatterplot(result_df, x="eigenvector_centrality", y="diffusion_centrality", hue="dataset")
+
+# +
+import pickle
+
+with open("mini_result.pkl", "rb") as input_file:
+    e = pickle.load(input_file)
+# -
 
 
+e.groupby("dataset")["vcmpr5"].mean()

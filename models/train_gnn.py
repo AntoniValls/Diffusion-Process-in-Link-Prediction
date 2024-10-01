@@ -73,8 +73,13 @@ def train_and_predict(train_data, val_data, test_data, n_features, device, epoch
     z = model.encode(test_data.x, test_data.edge_index)
     test_predictions = model.decode(z, test_data.edge_label_index).view(-1).sigmoid().detach().cpu().numpy()
     test_label = test_data.edge_label.cpu().numpy()
+    z_val = model.encode(val_data.x, val_data.edge_index)
+    val_predictions = model.decode(z_val, val_data.edge_label_index).view(-1).sigmoid().detach().cpu().numpy()
+    val_label = val_data.edge_label.cpu().numpy()
+
     G = to_networkx(train_data, to_undirected=True)
-    positive_val_edges = val_data.edge_label_index[:, val_data.edge_label == 1].cpu().numpy()
+    val_edges = val_data.edge_label_index.cpu().numpy()
+
     #TODO: We need the edge indices also for the negative ones, I'm stupid!
     #positive_test_edges = test_data.edge_label_index[:, test_data.edge_label == 1].cpu().numpy()
     all_test_edges = test_data.edge_label_index.cpu().numpy()
@@ -88,5 +93,7 @@ def train_and_predict(train_data, val_data, test_data, n_features, device, epoch
     return {"train_graph": G,
             "test_predictions": test_predictions,
             "test_labels": test_label,
-            "val_edges": positive_val_edges,
+            "val_predictions": val_predictions,
+            "val_labels": val_label,
+            "val_edges": val_edges,
             "test_edges": all_test_edges}

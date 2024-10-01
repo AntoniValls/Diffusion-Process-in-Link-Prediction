@@ -143,7 +143,8 @@ def get_complex_path(G, T):
 
 
 def process_node(node, G, T):
-    # TODO: check if there is a mistake with calculating the shortest path to neighborhood also;
+    # TODO: check if there is a mistake with calculating the shortest path to neighborhood -> easy fix
+    # substract the number of neighbors from the len_sum
     infected_nodes = complex_contagion(G, T=T, source_node=node)
     if infected_nodes:
         sub = G.subgraph(infected_nodes)
