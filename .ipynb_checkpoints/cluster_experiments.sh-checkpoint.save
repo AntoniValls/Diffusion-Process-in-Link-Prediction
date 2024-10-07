@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=lp_bias
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
+#SBATCH --partition=cpu
+#SBATCH --gres=cpu:1
 #SBATCH --time=10:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
@@ -13,4 +13,4 @@
 source /home/antoni_valls/beegfs/miniconda3/etc/profile.d/conda.sh
 conda activate lp_env
 # Run the Python script
-python cluster_experiments.py --model_name 'gat' --tgm_type 'AttributedGraphDataset' --name 'wiki' --epochs 200
+python cluster_experiments.py --tgm_type 'Planetoid' --name 'cora' --epochs 200
