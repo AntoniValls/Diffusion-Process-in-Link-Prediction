@@ -29,7 +29,7 @@ class IndianVillages(Dataset):
         into raw_dir (downloaded dataset) and processed_dir (processed data). 
         """
         self.adj_matrix = adj
-        self.features = features
+        self.features = torch.tensor(features, dtype=torch.float) 
         self.transform = transform
         self.pretransform = pre_transform
         super(IndianVillages, self).__init__(root, transform, pre_transform)
