@@ -2,6 +2,7 @@ from torch_geometric.datasets import Planetoid, AttributedGraphDataset, Twitch, 
 from utils.evaluation import search_files
 from utils.indian_villages import IndianVillages
 import torch
+import pandas as pd
 import os.path as osp
 
 
@@ -34,14 +35,29 @@ def data_loader(tgm_type, name=None, transform=None):
 
         name = int(name)
         if 1 <= name <= 77 and name not in [13, 22]:
+            # Load adjacency matrix
             search_dir = "data/indian_villages/Data/1. Network Data/Adjacency Matrices"
             pattern = f".allVillageRelationships_HH_vilno_{name}." 
             file = search_files(directory=search_dir, pattern=pattern)
 
             adj_matrix = np.genfromtxt(file[0], delimiter=",")
 
+            # Load features
+            HH_feat_path = "data/indian_villages/Data/2. Demographics and Outcomes/household_characteristics.dta"
+            HH_features = pd.read_stata(HH_feat_path)
+            HH_features = HH_features[HH_features["village"] == name]
+
+            # Select relevant columns
+            selected_columns = ["hohreligion", "castesubcaste", "rooftype1", "rooftype2", "rooftype3", "rooftype4", "rooftype5",	 "room_no", "electricity", "latrine", "hhSurveyed", "ownrent", "leader"]
+            HH_features = HH_features[selected_columns]
+    
+            # Process create dummies for categorical columns   
+            categorical_columns = ["hohreligion", "castesubcaste", "electricity", "latrine", "ownrent"]
+            HH_features = pd.get_dummies(HH_features, columns=categorical_columns, drop_first=False)
+            HH_features = HH_features.map(lambda x: 1 if x is True else (0 if x is False else x))
+
             # Obtain the dataset
-            dataset = IndianVillages(root='data/indian_villages/Using', adj=adj_matrix, transform=transform)
+            dataset = IndianVillages(root='data/indian_villages/Using', adj=adj_matrix, features=HH_features.values, transform=transform)
 
         else:
              raise ValueError(f"Error: The name '{name}' is not correct. It must be between 1 and 77, and cannot be 13 or 22.")

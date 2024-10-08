@@ -23,12 +23,13 @@ import os.path as osp
 
 
 class IndianVillages(Dataset):
-    def __init__(self, root, adj, transform=None, pre_transform=None):
+    def __init__(self, root, adj, features, transform=None, pre_transform=None):
         """
         root = Where the dataset should be stored. This folder is split
         into raw_dir (downloaded dataset) and processed_dir (processed data). 
         """
         self.adj_matrix = adj
+        self.features = features
         self.transform = transform
         self.pretransform = pre_transform
         super(IndianVillages, self).__init__(root, transform, pre_transform)
@@ -52,8 +53,7 @@ class IndianVillages(Dataset):
         row, col = np.where(self.adj_matrix > 0)
         edge_index = torch.tensor(np.array([row, col]), dtype=torch.long)
         num_nodes = self.adj_matrix.shape[0]
-        x = torch.eye(num_nodes, dtype=torch.float)  # Dummy node features CHANGE THIS
-        self.data = Data(x=x, edge_index=edge_index)
+        self.data = Data(x=self.features, edge_index=edge_index)
 
         self.data = self.data if self.pre_transform is None else self.pre_transform(self.data)
 

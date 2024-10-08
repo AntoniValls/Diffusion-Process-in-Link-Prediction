@@ -13,4 +13,4 @@
 source /home/antoni_valls/beegfs/miniconda3/etc/profile.d/conda.sh
 conda activate lp_env
 # Run the Python script
-python cluster_experiments.py --model_name 'gat' --tgm_type 'AttributedGraphDataset' --name 'wiki' --epochs 200
+python cluster_experiments.py --model_name 'gat' --tgm_type 'IndianVillages' --name '60' --epochs 200

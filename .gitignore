@@ -3,4 +3,4 @@ log/*
 trying_IV.ipynb
 */.ipynb_checkpoints/*
 */__pycache__/*
-
+.ipynb_checkpoints/*
