@@ -42,7 +42,7 @@ if __name__ == '__main__':
     train_data, val_data, test_data = dataset[0]
     n_features = dataset.num_features
     # train model
-    result = train_and_predict(model_name=args. model_name,
+    result = train_and_predict(model_name=args.model_name,
                                train_data=train_data,
                                val_data=val_data,
                                test_data=test_data,

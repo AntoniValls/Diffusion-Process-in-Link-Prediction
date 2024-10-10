@@ -13,6 +13,7 @@ def get_relevant_nodes(G, edges):
 
 
 def get_sorted_links(edges, labels, predictions, node):
+    # print(edges, labels, predictions, node)
     # Get the indices where this node appears in the test_edges
     indices_0 = np.where(edges[0] == node)[0]
     indices_1 = np.where(edges[1] == node)[0]

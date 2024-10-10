@@ -111,7 +111,7 @@ def compute_centralities(graph):
 
 class Evaluate:
 
-    def __init__(self, result: object) -> object:
+    def __init__(self, result):
         self.node_df = None
         self.G_true = None
         self.G_pred = None

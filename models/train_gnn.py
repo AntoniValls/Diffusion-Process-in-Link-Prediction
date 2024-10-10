@@ -1,4 +1,4 @@
-from models.gcn import Net, GATNet, SuperGATNet
+from models.gcn import Net, GATNet, SuperGATNet, GCN
 import torch
 import os.path as osp
 
@@ -11,17 +11,19 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.utils import negative_sampling
 from torch_geometric.utils.convert import to_networkx
 from utils.utils import EarlyStopper
+from utils.seal_utils import evaluate_auc
 from torch_geometric import seed_everything
 
 
-
-def train_and_predict(model_name, train_data, val_data, test_data, n_features, device, epochs, seed=42):
-    #TODO: set seed?
+def train_and_predict(model_name, train_data, val_data, test_data, n_features, device, epochs, args=None, seed=42):
     seed_everything(seed)
     if model_name == "gcn":
         model = Net(n_features, 128, 64).to(device)
     elif model_name == "gat":
         model = GATNet(n_features, 128, 64).to(device)
+    else:
+        raise TypeError("Invalid model: only gcn, gat or seal") 
+    
     optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
     criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -59,6 +61,7 @@ def train_and_predict(model_name, train_data, val_data, test_data, n_features, d
 
     best_val_auc = final_test_auc = 0
     early_stopper = EarlyStopper(patience=10, min_delta=0)
+            
     for epoch in range(1, epochs):
         loss = train()
         val_auc = test(val_data)
@@ -71,8 +74,8 @@ def train_and_predict(model_name, train_data, val_data, test_data, n_features, d
         if early_stopper.early_stop_score(val_auc):
             break
 
-    print(f'Final Test: {final_test_auc:.4f}')
-
+    print(f'Final Test: {final_test_auc:.4f}')        
+        
     z = model.encode(test_data.x, test_data.edge_index)
     test_predictions = model.decode(z, test_data.edge_label_index).view(-1).sigmoid().detach().cpu().numpy()
     test_label = test_data.edge_label.cpu().numpy()
@@ -100,3 +103,6 @@ def train_and_predict(model_name, train_data, val_data, test_data, n_features, d
             "val_labels": val_label,
             "val_edges": val_edges,
             "test_edges": all_test_edges}
+
+
+    

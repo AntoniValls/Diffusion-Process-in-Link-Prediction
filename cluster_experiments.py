@@ -11,12 +11,15 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int)
     args = parser.parse_args()
 
-    script_path = "scripts/run_gcn.py"
+    if args.model_name == "seal":
+         script_path = "scripts/run_seal.py"
+    else:
+        script_path = "scripts/run_gcn.py"
     project_root = os.path.abspath('')
     env = os.environ.copy()
     env['PYTHONPATH'] = project_root + os.pathsep + env.get('PYTHONPATH', '')
 
-    for seed in range(10):
+    for seed in range(10): # THIS HAS TO BE 10
         result = subprocess.run(['python', script_path, '--model_name', str(args.model_name), '--tgm_type', str(args.tgm_type), '--name', str(args.name),
                                  '--seed', str(seed), '--epochs', str(args.epochs)], capture_output=True, text=True,
                                env=env, cwd=project_root)
