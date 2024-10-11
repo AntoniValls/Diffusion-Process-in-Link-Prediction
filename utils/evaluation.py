@@ -131,6 +131,13 @@ class Evaluate:
             val_edges = list(map(tuple, self.val_edges.T))
             G_new.add_edges_from(val_edges)
         self.G_true = G_new
+        num_nodes = G_new.number_of_nodes()
+        num_edges = G_new.number_of_edges()
+        is_directed = nx.is_directed(G_new)
+        print("True")
+        print(f"Number of nodes: {num_nodes}")
+        print(f"Number of edges: {num_edges}")
+        print(f"Is the graph directed? {is_directed}")
 
     def add_predicted_edges(self):
         predicted_edges_array = self.test_edges[:, self.test_predictions >= 0.5]
@@ -138,6 +145,13 @@ class Evaluate:
         G_new = self.graph.copy()
         G_new.add_edges_from(predicted_edges)
         self.G_pred = G_new
+        num_nodes = G_new.number_of_nodes()
+        num_edges = G_new.number_of_edges()
+        is_directed = nx.is_directed(G_new)
+        print("Pred")
+        print(f"Number of nodes: {num_nodes}")
+        print(f"Number of edges: {num_edges}")
+        print(f"Is the graph directed? {is_directed}")
 
     def get_centrality(self, method, *args, **kwargs):
 

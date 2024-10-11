@@ -23,12 +23,17 @@ warnings.filterwarnings("ignore", category=UserWarning)
 from scipy.sparse import SparseEfficiencyWarning
 warnings.simplefilter('ignore', SparseEfficiencyWarning)
 
-def get_graph_results(model, train_dataset, val_dataset, test_dataset, device):
+def get_graph_results(model, split_edge, train_dataset, val_dataset, test_dataset, device):
     train_data = next(iter(DataLoader(train_dataset, batch_size=len(train_dataset)))).to(device)
     val_data = next(iter(DataLoader(val_dataset, batch_size=len(val_dataset)))).to(device)
     test_data = next(iter(DataLoader(test_dataset, batch_size=len(test_dataset)))).to(device)
     
-    G = to_networkx(train_data, to_undirected=True)
+    # Create the original training graph without SEAL subgraphs
+    original_train_edge_index = split_edge['train']['edge'].t()
+    G = to_networkx(
+        Data(edge_index=original_train_edge_index), to_undirected=True
+    )
+
 
     val_logits = model(val_data.z, val_data.edge_index, val_data.batch, val_data.x, None, val_data.node_id)
     val_predictions = val_logits.view(-1).sigmoid().detach().cpu().numpy()
@@ -163,6 +168,9 @@ if __name__ == '__main__':
     # Training settings
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--lr', type=float, default=0.0001)
+    parser.add_argument('--train_percent', type=float, default=100)
+    parser.add_argument('--val_percent', type=float, default=100)
+    parser.add_argument('--test_percent', type=float, default=100)
     
     # Subgraph extraction settings
     parser.add_argument('--num_hops', type=int, default=1)
@@ -172,6 +180,12 @@ if __name__ == '__main__':
                         help="which specific labeling trick to use") # Useful?
     parser.add_argument('--use_feature', action='store_true', default=True, 
                         help="whether to use raw node features as GNN input")
+    parser.add_argument('--dynamic_train', action='store_true', 
+                    help="dynamically extract enclosing subgraphs on the fly")
+    parser.add_argument('--dynamic_val', action='store_true')
+    parser.add_argument('--dynamic_test', action='store_true')
+    parser.add_argument('--num_workers', type=int, default=16, 
+                        help="number of workers for dynamic mode; 0 if not dynamic")
     args = parser.parse_args()
 
     # check device
@@ -191,16 +205,18 @@ if __name__ == '__main__':
     data = dataset[0]
     data.edge_index = split_edge['train']['edge'].t()
     directed = False
+    if not args.dynamic_train and not args.dynamic_val and not args.dynamic_test:
+        args.num_workers = 0
 
     # convert the data in seal_datasets, i.e. with the subgraphs done
     path = f"data/{args.tgm_type}/{args.name}/SEAL"
-    dataset_class = 'SEALDataset'
+    dataset_class = 'SEALDynamicDataset' if args.dynamic_train else 'SEALDataset'
     train_dataset = eval(dataset_class)(
         path, 
         data, 
         split_edge, 
         num_hops=args.num_hops, 
-        percent=100, 
+        percent=args.train_percent, 
         split='train', 
         node_label=args.node_label, 
         ratio_per_hop=args.ratio_per_hop, 
@@ -226,13 +242,14 @@ if __name__ == '__main__':
                     labels=labels)
             f.savefig('tmp_vis.png')
             pdb.set_trace()
-    
+            
+    dataset_class = 'SEALDynamicDataset' if args.dynamic_val else 'SEALDataset'
     val_dataset = eval(dataset_class)(
         path, 
         data, 
         split_edge, 
         num_hops=args.num_hops, 
-        percent=100, 
+        percent=args.val_percent, 
         split='valid', 
         node_label=args.node_label, 
         ratio_per_hop=args.ratio_per_hop, 
@@ -240,12 +257,13 @@ if __name__ == '__main__':
         directed=directed, 
     )
     
+    dataset_class = 'SEALDynamicDataset' if args.dynamic_test else 'SEALDataset'
     test_dataset = eval(dataset_class)(
         path, 
         data, 
         split_edge, 
         num_hops=args.num_hops, 
-        percent=100, 
+        percent=args.test_percent, 
         split='test', 
         node_label=args.node_label, 
         ratio_per_hop=args.ratio_per_hop, 
@@ -254,9 +272,9 @@ if __name__ == '__main__':
     )
         
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, 
-                               shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
+                               shuffle=True, num_workers=args.num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers)
 
     # define the training process
     emb = None
@@ -279,10 +297,11 @@ if __name__ == '__main__':
 
     # get the graph results
     gresults = get_graph_results(model,
-                                train_dataset,
-                                val_dataset,
-                                test_dataset,
-                                device)
+                                 split_edge,
+                                 train_dataset,
+                                 val_dataset,
+                                 test_dataset,
+                                 device)
     
     # save outputs as pickle
     output_dir = f'data/results/{args.model_name}'

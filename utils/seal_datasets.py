@@ -63,9 +63,7 @@ class SEALDataset(InMemoryDataset):
 
 
 class SEALDynamicDataset(Dataset):
-    def __init__(self, root, data, split_edge, num_hops, percent=100, split='train', 
-                 use_coalesce=False, node_label='drnl', ratio_per_hop=1.0, 
-                 max_nodes_per_hop=None, directed=False, **kwargs):
+    def __init__(self, root, data, split_edge, num_hops, percent=100, split='train', node_label='drnl', ratio_per_hop=1.0, max_nodes_per_hop=None, directed=False, **kwargs):
         self.data = data
         self.split_edge = split_edge
         self.num_hops = num_hops

@@ -298,7 +298,7 @@ class ComplexEvaluate(BaseEvaluate):
 
 
 
-def evaluate_dataset(model_name, data_name, eval_type="s", p=0.1, n_simulations=100, paralell=False, n_cores=None):
+def evaluate_dataset(model_name, data_name, eval_type="s", p=0.1, n_simulations=1, paralell=True, n_cores=None):
 
     files = read_prediction_files(model_name=model_name, data_name=data_name)
 
