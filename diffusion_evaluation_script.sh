@@ -8,7 +8,7 @@
 #SBATCH --error=log/dif_result.err
 
 # Load the conda environment
-source /home/bkomander/miniconda3/etc/profile.d/conda.sh
-conda activate /home/bkomander/beegfs/pyg_env
+source /home/antoni_valls/beegfs/miniconda3/etc/profile.d/conda.sh
+conda activate lp_env
 # Run the Python script
-python diffusion_evaluation_script.py --model "gcn" --data "facebook" --n_simulation 1000 --paralell True
+python diffusion_evaluation_script.py --model "gcn" --data "facebook" --eval_type "c" --n_simulation 1000 --paralell True
