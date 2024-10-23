@@ -5,58 +5,19 @@ import pickle
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
+import torch_geometric
 import pandas as pd
 from collections import defaultdict
 from sklearn.metrics import roc_auc_score, f1_score, recall_score, precision_score, accuracy_score
 from utils.metrics import vcmpr_OG, vcmpr_IB_min, vcmpr_BJ, vcmpr_IB_max
+from utils.data_utils import data_loader, read_prediction_files
+
 """
-Script for evaluating the predictions. The classes below are not the best structure. One thing I could do however, 
+Bjorn: "The classes below are not the best structure. One thing I could do however, 
 is make the Evaluate class more abstract and then for each method (groups, inter-group links and whole graph) write a children 
-class. 
+class."
 """
 
-
-def search_files(directory: str, pattern: str = '.') -> list:
-    """
-    Parameters
-    ----------
-    directory : str
-        File directiory to return.
-    pattern : str, optional
-        DESCRIPTION. The default is '.'.
-
-    Returns
-    -------
-    list
-        sorted list of files in directory.
-
-    """
-    files = list()
-    for root, _, file_names in os.walk(directory):
-        for file_name in file_names:
-            files.append(os.path.join(root, file_name))
-    files = list(filter(re.compile(pattern).search, files))
-    files.sort()
-    # sorting files with numbers as strings does not sort them de or increasing
-    return files
-
-
-def get_prediction_files(model_name, data):
-    # TODO: add pickle ending tbs?
-    path = osp.join("data/results", model_name)
-    files = search_files(path, pattern=f"{data}.")
-    return files
-
-
-def read_prediction_files(model_name, data_name):
-    files = get_prediction_files(model_name, data_name)
-    return_list = []
-    for file in files:
-        with open(file, 'rb') as fp:
-            result_object = pickle.load(fp)
-        return_list.append(result_object)
-
-    return return_list
 
 def calculate_average_degree(test_edges, test_labels):
     """
@@ -91,7 +52,7 @@ def calculate_average_degree(test_edges, test_labels):
         return 0.0
     return round(total_degree / num_unique_nodes)
 
-def calculate_gini(x):
+def gini_inefficient(x):
     # Mean absolute difference
     mad = np.abs(np.subtract.outer(x, x)).mean()
     # Relative mean absolute difference
@@ -102,12 +63,26 @@ def calculate_gini(x):
         # Gini coefficient
         g = 0.5 * rmad
         return g
-
-def compute_centralities(graph):
-    eigen = nx.eigenvector_centrality_numpy(graph)
-    degree = nx.degree_centrality(G)
-    diffusion = dif
-
+        
+def gini(x, w=None):
+    # The rest of the code requires numpy arrays.
+    x = np.asarray(x)
+    if w is not None:
+        w = np.asarray(w)
+        sorted_indices = np.argsort(x)
+        sorted_x = x[sorted_indices]
+        sorted_w = w[sorted_indices]
+        # Force float dtype to avoid overflows
+        cumw = np.cumsum(sorted_w, dtype=float)
+        cumxw = np.cumsum(sorted_x * sorted_w, dtype=float)
+        return (np.sum(cumxw[1:] * cumw[:-1] - cumxw[:-1] * cumw[1:]) / 
+                (cumxw[-1] * cumw[-1]))
+    else:
+        sorted_x = np.sort(x)
+        n = len(x)
+        cumx = np.cumsum(sorted_x, dtype=float)
+        # The above formula, with all weights equal to 1 simplifies to:
+        return (n + 1 - 2 * np.sum(cumx) / cumx[-1]) / n
 
 class Evaluate:
 
@@ -367,10 +342,10 @@ class EvaluateNode(Evaluate):
         '''
         Add VCMPR@k score, Implicit Bias paper definition and min variation
         '''
-        # score_OG = vcmpr_OG(G_test=self.G_true, edges=self.test_edges,
-        #               labels=self.test_labels, predictions=self.test_predictions,
-        #               k=k)
-        # score_OG_df = pd.DataFrame(list(score_OG.items()), columns=["node_index", f"vcmpr_OG{k}"])
+        score_IB_max = vcmpr_IB_max(G_test=self.G_true, edges=self.test_edges,
+                      labels=self.test_labels, predictions=self.test_predictions,
+                      k=k)
+        score_IB_max_df = pd.DataFrame(list(score_IB_max.items()), columns=["node_index", f"vcmpr_IB_max{k}"])
 
         score_IB_min = vcmpr_IB_min(G_test=self.G_true, edges=self.test_edges,
               labels=self.test_labels, predictions=self.test_predictions,
@@ -378,41 +353,25 @@ class EvaluateNode(Evaluate):
         
         score_IB_min_df = pd.DataFrame(list(score_IB_min.items()), columns=["node_index", f"vcmpr_IB_min{k}"])
 
-        # score_IB_max = vcmpr_IB_max(G_test=self.G_true, edges=self.test_edges,
-        #       labels=self.test_labels, predictions=self.test_predictions,
-        #       k=k)
-        
-        # score_IB_max_df = pd.DataFrame(list(score_IB_max.items()), columns=["node_index", f"vcmpr_IB_max{k}"])
-
-        # score_BJ = vcmpr_BJ(G_test=self.G_true, edges=self.test_edges,
-        #       labels=self.test_labels, predictions=self.test_predictions,
-        #       k=k)
-        
-        # score_BJ_df = pd.DataFrame(list(score_BJ.items()), columns=["node_index", f"vcmpr_BJ{k}"])
 
         # merging
-        # score_df = pd.merge(score_IB_min_df, score_IB_max_df, on="node_index")
+        score_df = pd.merge(score_IB_min_df, score_IB_max_df, on="node_index")
 
-        return score_IB_min_df
+        return score_df
 
     def final_result(self, list_of_methods, method_names, k):
         self.add_real_edges()
         self.add_predicted_edges()
 
-        train_centrality_df = self.get_centrality_df(list_of_methods=list_of_methods,
-                                               method_names=method_names, graph="Train") # Train Graph
         true_centrality_df = self.get_centrality_df(list_of_methods=list_of_methods,
                                                method_names=method_names, graph="True") # True Graph
         pred_centrality_df = self.get_centrality_df(list_of_methods=list_of_methods,
                                                method_names=method_names, graph="Pred") # Predicted Graph
         score_df = self.score_df(k=k)
 
-        merge1 = pd.merge(train_centrality_df, true_centrality_df, on='node_index', suffixes=('_train', '_true'))
-        merge2 = pd.merge(merge1, pred_centrality_df, on='node_index')
-        rename_dict = {col: f"{col}_pred" for col in method_names}
-        merge2 = merge2.rename(columns=rename_dict)
+        merge1 = pd.merge(true_centrality_df, pred_centrality_df, on='node_index', suffixes=('_true', '_pred'))
 
-        return pd.merge(score_df, merge2, how="left") # how="right" leaves NaNs 
+        return pd.merge(score_df, merge1, how="left") # how="right" leaves NaNs 
 
 
 def evaluate_dataset(model_name, data_name, method_list, method_names):
@@ -426,36 +385,117 @@ def evaluate_dataset(model_name, data_name, method_list, method_names):
         # define k as the average degree on the test set of the first seeded version
         if idx == 0:
             k = evaluater.calculate_average_degree()
+            
         data_list.append(evaluater.final_result(list_of_methods=method_list,
                                                 method_names=method_names, k=k))
 
     result = pd.concat(data_list).groupby("node_index").mean().reset_index() # mean of the different seeds
     result["dataset"] = data_name
 
-    return result, k
+    return result
 
 
 def evaluate_all(model_name, list_of_data, method_list, method_names):
+    """
+    Function for evaluating the predictions and real networks. It is not the best pipeline, not efficient, as one should repeat the centralities measures for every GNNs (which makes no sense).
+    """
 
     final_list = []
-    metrics_dict = {}
-    k_dict = {}
     for data in list_of_data:
 
         # Obtain the results, the k value, and the ROC-AUC score for each dataset
-        result, k = evaluate_dataset(model_name=model_name, data_name=data, method_list=method_list,
+        result = evaluate_dataset(model_name=model_name, data_name=data, method_list=method_list,
                                   method_names=method_names)
 
-        # Add the k and the graph-level scores to the dicts
-        k_dict[data] = k
-        data_metrics_dict = {}
-        data_metrics_dict[f"AVG VCMPR@{k}"] = float(result.loc[:,f"vcmpr_IB_min{k}"].mean())
-
-        metrics_dict[f"{data}"] = data_metrics_dict
-        
         final_list.append(result)
 
-    return final_list, k_dict, metrics_dict
+    return final_list
+
+
+###########################################################################################
+#                         More efficient way to do it                                     #
+###########################################################################################
+def get_centrality_df(G, list_of_methods, method_names):
+
+    results = []
+
+    for method in list_of_methods:
+        method_result = method(G)
+        if isinstance(method_result, dict):
+            results.append(method_result)
+        else:
+            raise ValueError(f"Error: The centrality '{method}' is not returning a dict object.")
+            
+    df = pd.DataFrame(results).T
+
+    df.columns = method_names
+    # normalize with sd
+    df = df / df.std()
+
+    return df.reset_index(names="node_index")
+
+def graph_level_topologies(G, centrality_df):
+    """
+    Function to compute graph-level properties:
+        - Average Degree
+        - Average Clustering Coefficient
+        - Gini Index for each centrality
+    """
+    # Calculate average degree
+    degrees = dict(G.degree())
+    average_degree = np.mean(list(degrees.values()))
+    
+    # Calculate average clustering coefficient
+    clustering_coefficient = nx.average_clustering(G)
+    
+    # Calculate Gini index for each centrality in the DataFrame
+    gini_indices = {}
+    for col in tqdm(centrality_df.columns[1:], total=len(centrality_df.columns[1:]), desc=f"Gini Index"):  # Skip the 'node_index' column
+        centrality_values = centrality_df[col].values
+        gini_indices[col] = gini(centrality_values)
+    
+    # Create a dictionary of the results
+    graph_properties = {
+        "Average_Degree": average_degree,
+        "Clustering_Coefficient": clustering_coefficient,
+        "Gini_Indices": gini_indices
+    }
+    
+    return graph_properties
+
+      
+def nodes_and_graph_properties(tgm_type, data_name, method_list, method_names, save=False):
+    """
+    Function that loads the dataset and computes the node-level centrality measures
+    and the graph-level properties.
+    """
+    dataset = data_loader(tgm_type=tgm_type, name=data_name, transform=None)
+    G = torch_geometric.utils.to_networkx(dataset[0])
+    G = G.to_undirected()
+    result = get_centrality_df(G, method_list, method_names)
+
+    # Compute graph-level properties
+    graph_properties = graph_level_topologies(G, result)
+
+    if save:
+        result.to_csv(f'data/node_level_centralities/{data_name}.csv', index=False)
+        pd.DataFrame([graph_properties]).to_json(f'data/graph_level_properties/{data_name}.json', orient='records')
+
+    return result, graph_properties
+
+
+
+
+    
+
+    
+    
+
+    
+
+
+    
+    
 
 
 

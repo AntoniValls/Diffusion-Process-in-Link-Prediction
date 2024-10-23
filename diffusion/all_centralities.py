@@ -14,6 +14,7 @@ import pandas as pd
 class CentralityMeasures:
     '''
     This object computes the centrality measures of any graph from the torch_geometric library
+    Old way to do it but works good!
     '''
     def __init__(self, tgm_type, name, transform=None):
 

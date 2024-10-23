@@ -10,7 +10,7 @@ Script about the centrality mesures from Jackson et. al. 2020
 def decay_centrality(G, p, T):
 
     centrality = {} 
-    for i in G.nodes:
+    for i in tqdm(G.nodes, desc="Decay centrality"):
         centrality[i] = sum(p**l * len(nx.single_source_shortest_path_length(G, i, cutoff=l)) for l in range(1, T+1))
         
     return centrality
@@ -87,7 +87,7 @@ def diffusion_centrality(G, T):
     q = get_first_eigenval(A)
 
     ones = np.ones(A.shape[0])
-    for t in range(1, T + 1):
+    for t in tqdm(range(1, T + 1), desc="Diffusion centrality"):
         result_sum += np.linalg.matrix_power(q * A, t)
 
     centrality = np.dot(result_sum, ones)
@@ -119,7 +119,7 @@ def Godfather(G):
         
     # godfather_index_dict = {node: godfather_index[i] for i, node in enumerate(G.nodes)}
 
-    for i in range(n):
+    for i in tqdm(range(n), desc="Godfather centrality"):
         # Column vector g_i (connections of node i to others)
         g_i = g[i, :]
         

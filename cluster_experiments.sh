@@ -13,4 +13,4 @@
 source /home/antoni_valls/beegfs/miniconda3/etc/profile.d/conda.sh
 conda activate lp_env
 # Run the Python script
-python cluster_experiments.py --model_name 'seal' --tgm_type 'Planetoid' --name 'Cora' --epochs 200
+python cluster_experiments.py --model_name 'gat' --tgm_type 'Twitch' --name 'ES' --epochs 200

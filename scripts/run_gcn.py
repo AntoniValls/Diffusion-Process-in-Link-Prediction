@@ -33,7 +33,7 @@ if __name__ == '__main__':
     transform = T.Compose([
         T.NormalizeFeatures(),
         T.ToDevice(device),
-        T.RandomLinkSplit(num_val=0.05, num_test=0.1, is_undirected=True,
+        T.RandomLinkSplit(num_val=0.1, num_test=0.3, is_undirected=True,
                           add_negative_train_samples=False),
     ])
 

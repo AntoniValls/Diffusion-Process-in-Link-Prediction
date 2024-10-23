@@ -1,10 +1,54 @@
 from torch_geometric.datasets import Planetoid, AttributedGraphDataset, Twitch, LastFMAsia, GitHub, CitationFull, Coauthor, KarateClub
-from utils.evaluation import search_files
 from utils.indian_villages import IndianVillages
 import torch
 import pandas as pd
+import os
 import os.path as osp
+import re
+import pickle
 import warnings
+
+def search_files(directory: str, pattern: str = '.') -> list:
+    """
+    Parameters
+    ----------
+    directory : str
+        File directiory to return.
+    pattern : str, optional
+        DESCRIPTION. The default is '.'.
+
+    Returns
+    -------
+    list
+        sorted list of files in directory.
+
+    """
+    files = list()
+    for root, _, file_names in os.walk(directory):
+        for file_name in file_names:
+            files.append(os.path.join(root, file_name))
+    files = list(filter(re.compile(pattern).search, files))
+    files.sort()
+    # sorting files with numbers as strings does not sort them de or increasing
+    return files
+
+
+def get_prediction_files(model_name, data):
+    # TODO: add pickle ending tbs?
+    path = osp.join("data/results", model_name)
+    files = search_files(path, pattern=f"{data}.")
+    return files
+
+
+def read_prediction_files(model_name, data_name):
+    files = get_prediction_files(model_name, data_name)
+    return_list = []
+    for file in files:
+        with open(file, 'rb') as fp:
+            result_object = pickle.load(fp)
+        return_list.append(result_object)
+
+    return return_list
 
 def data_loader(tgm_type, name=None, transform=None):
     with warnings.catch_warnings():

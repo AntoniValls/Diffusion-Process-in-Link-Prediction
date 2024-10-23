@@ -164,7 +164,7 @@ def paralell_complex_path(G, T, num_workers=None):
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = {executor.submit(process_node, node, G, T): node for node in G.nodes}
         total_futures = len(futures)
-        for future in tqdm(as_completed(futures), total=total_futures):
+        for future in tqdm(as_completed(futures), total=total_futures, desc="Complex path centrality"):
             node, avg_len = future.result()
             complex_paths[node] = avg_len
 
