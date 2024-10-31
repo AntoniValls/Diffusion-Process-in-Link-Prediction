@@ -11,7 +11,6 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.utils import negative_sampling
 from torch_geometric.utils.convert import to_networkx
 from utils.utils import EarlyStopper
-from utils.seal_utils import evaluate_auc
 from torch_geometric import seed_everything
 
 

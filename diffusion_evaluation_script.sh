@@ -11,4 +11,4 @@
 source /home/antoni_valls/beegfs/miniconda3/etc/profile.d/conda.sh
 conda activate lp_env
 # Run the Python script
-python diffusion_evaluation_script.py --model "gcn" --data "facebook" --eval_type "c" --n_simulation 1000 --paralell True
+python diffusion_evaluation_script.py --model "gat" --data "ES" --eval_type "s" --prob 0.5 --n_simulation 100 --paralell True

@@ -9,6 +9,8 @@ import multiprocessing as mp
 from utils.evaluation import read_prediction_files
 from diffusion.contagion_models import si_simulation, threshold_diffusion
 import pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def gini_coefficient(x):
     mad = np.abs(np.subtract.outer(x, x)).mean()
@@ -52,7 +54,7 @@ class BaseEvaluate:
             G_pred.add_edges_from(val_predicted_edges)
             G_true.add_edges_from(val_true_edges)
 
-        if density_correction:
+        if density_correction:                                                                                             # is this correct?
             edge_difference = G_pred.number_of_edges() - G_true.number_of_edges()
             if edge_difference > 0:
                 edges = list(G_pred.edges)
@@ -193,7 +195,7 @@ class BaseEvaluate:
         # Create a DataFrame from the processed results
         results_df = pd.DataFrame(processed_results)
 
-        # Calculate vulnerability and recency for each node
+        # Calculate vulnerability and recency for each nodere
         vulnerability = {node: infection_count[node] / n_simulations for node in graph.nodes}
         recency = {
             node: sum(infection_timesteps[node]) / n_simulations if infection_timesteps[node] else None
@@ -314,7 +316,6 @@ def evaluate_dataset(model_name, data_name, eval_type="s", p=0.1, n_simulations=
         evaluator_class = SimpleEvaluate
     elif eval_type == "c":
         evaluator_class = ComplexEvaluate
-        #p = 0.2 #change the default;
     else:
         raise ValueError("Unknown evaluation type. Use 's' for Simple Contagion or 'c' for Complex Contagion.")
 
@@ -365,3 +366,131 @@ def process_results(file_path):
     metric_df = pd.DataFrame(result["metrics"])
 
     return true_si, pred_si, vul_df, metric_df
+
+# Diffusion graph-level metrics
+def plot_metrics(metrics_dict):
+    # Extracting true values into a dataframe
+    true_metrics = {}
+    pred_metrics = {}
+    std_true_metrics = {}
+    std_pred_metrics = {}
+    for dataset, values in metrics_dict.items():
+        true_metrics[dataset] = values[0]['true']  # True values
+        pred_metrics[dataset] = values[1]['pred']  # Predicted values
+
+    # Create a dataframe with metrics for plotting
+    true_df = pd.DataFrame(true_metrics).T
+    pred_df = pd.DataFrame(pred_metrics).T
+    true_std_df = true_df.loc[:,['iterations_std', 'infection_size_std', 'infection_rate_std']]
+    pred_std_df = pred_df.loc[:,['iterations_std', 'infection_size_std', 'infection_rate_std']]
+    
+    # Plotting each metric across all datasets
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharey=False)
+    metrics = ['iterations', 'infection_size', 'infection_rate']
+    
+    for i, metric in enumerate(metrics):
+        # Using error bars to show standard deviation
+        
+        axes[i].errorbar(true_df.index, true_df[metric + '_mean'], yerr=true_std_df[metric + '_std'], 
+                         fmt='o', color='blue', label=f'True {metric}', capsize=5)
+        axes[i].errorbar(pred_df.index, pred_df[metric + '_mean'], yerr=pred_std_df[metric + '_std'], 
+                 fmt='o', color='red', label=f'Pred {metric}', capsize=5)
+
+        axes[i].set_title(f'Metrics Across Datasets for {metric}')
+        axes[i].set_xlabel('Dataset')
+        axes[i].set_ylabel(metric)
+        axes[i].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+def size_and_rate(list_of_df):
+    """
+    Function that given result["pred_si"] or result["true_si"] returns
+    the mean and std of the iterations to stabilize, the infection size and
+    the infection rate
+    """
+    # Concatenate all dataframes into a single dataframe for analysis
+    combined_df = pd.concat(list_of_df, ignore_index=True)
+
+    mean_values = combined_df.groupby('file').mean()[['iterations', 'infection_size', 'infection_rate']]
+    overall_mean = combined_df[['iterations', 'infection_size', 'infection_rate']].mean().rename(lambda col: col + '_mean')
+    
+    std_dev_per_seed = combined_df.groupby('file').std()[['iterations', 'infection_size', 'infection_rate']]
+    std_dev_across_all_seeds = combined_df[['iterations', 'infection_size', 'infection_rate']].std().rename(lambda col: col + '_std')
+    
+    return pd.concat([overall_mean, std_dev_across_all_seeds])
+    
+def diffusion_graph_metrics(model, contagion, dataset_list, prob, plot=True):
+    metrics_dict = {}
+    for data_name in dataset_list:
+        file_path = f"data/contagion/{model}/{contagion}/{data_name}_si_100_{str(prob)}.pkl"
+
+        with open(file_path, 'rb') as file:
+            result = pickle.load(file)
+        true_list_df = result["true_si"]
+        pred_list_df = result["pred_si"]
+
+        # Iterations, infection size and infection rate
+        metrics_true = {"true" : size_and_rate(true_list_df)}
+        metrics_pred = {"pred" : size_and_rate(pred_list_df)}
+
+        metrics_dict[f"{data_name}"] = metrics_true, metrics_pred
+
+    if plot:
+        plot_metrics(metrics_dict)
+
+    # convert the dict into a dataframe
+    data = metrics_dict
+    # Create an empty list to store the rows of the dataframe
+    rows = []
+    
+    # Loop through each dataset
+    for dataset_name, metrics in data.items():
+        # Get the true and predicted values
+        true_values = metrics[0]['true']
+        pred_values = metrics[1]['pred']
+        
+        # Calculate the difference between true and predicted mean metrics
+        diff_iterations_mean = pred_values['iterations_mean'] - true_values['iterations_mean']
+        diff_infection_size_mean = pred_values['infection_size_mean'] - true_values['infection_size_mean']
+        diff_infection_rate_mean = pred_values['infection_rate_mean'] - true_values['infection_rate_mean']
+        
+        # Create a row for the dataframe
+        row = {
+            'Dataset': dataset_name,
+            'iterations_mean_true': true_values['iterations_mean'],
+            'iterations_mean_pred': pred_values['iterations_mean'],
+            'diff_iterations_mean': diff_iterations_mean,
+            'infection_size_mean_true': true_values['infection_size_mean'],
+            'infection_size_mean_pred': pred_values['infection_size_mean'],
+            'diff_infection_size_mean': diff_infection_size_mean,
+            'infection_rate_mean_true': true_values['infection_rate_mean'],
+            'infection_rate_mean_pred': pred_values['infection_rate_mean'],
+            'diff_infection_rate_mean': diff_infection_rate_mean,
+        }
+        
+        rows.append(row)
+    
+    # Create the dataframe
+    df = pd.DataFrame(rows)
+            
+    return df
+
+# Diffusion node-level metrics
+def diffusion_node_metrics(model, contagion, dataset_list, prob, plot=True):
+    metrics_dict = {}
+    for data_name in dataset_list:
+        file_path = f"data/contagion/{model}/{contagion}/{data_name}_si_100_{str(prob)}.pkl"
+
+        with open(file_path, 'rb') as file:
+            result = pickle.load(file)
+                           
+        list_of_df = result["info_vulnerability"]
+        stacked_df = pd.concat(list_of_df, keys=range(len(list_of_df)), names=['file', 'node_index'])
+        mean_df = stacked_df.groupby('node_index').mean()
+        mean_df['vulnerability_diff'] = mean_df['pred_vulnerability'] - mean_df['true_vulnerability']
+        mean_df['recency_diff'] = mean_df['pred_recency'] - mean_df['true_recency']
+
+        metrics_dict[f"{data_name}"] = mean_df
+    return metrics_dict
