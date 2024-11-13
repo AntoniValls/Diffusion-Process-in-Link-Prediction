@@ -1,6 +1,7 @@
 import subprocess
 import os
 import argparse
+from tqdm import tqdm
 
 if __name__ == '__main__':
 
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     env = os.environ.copy()
     env['PYTHONPATH'] = project_root + os.pathsep + env.get('PYTHONPATH', '')
 
-    for seed in range(10): # THIS HAS TO BE 10
+    for seed in tqdm(range(10)): # THIS HAS TO BE 10
         result = subprocess.run(['python', script_path, '--model_name', str(args.model_name), '--tgm_type', str(args.tgm_type), '--name', str(args.name),
                                  '--seed', str(seed), '--epochs', str(args.epochs)], capture_output=True, text=True,
                                env=env, cwd=project_root)

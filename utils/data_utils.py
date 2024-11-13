@@ -1,4 +1,4 @@
-from torch_geometric.datasets import Planetoid, AttributedGraphDataset, Twitch, LastFMAsia, GitHub, CitationFull, Coauthor, KarateClub
+from torch_geometric.datasets import Planetoid, AttributedGraphDataset, Twitch, LastFMAsia, GitHub, CitationFull, Coauthor, RelLinkPredDataset
 from utils.indian_villages import IndianVillages
 import torch
 import pandas as pd
@@ -65,6 +65,8 @@ def data_loader(tgm_type, name=None, transform=None):
             dataset = CitationFull(path, name=name, transform=transform)
         elif tgm_type == "Coauthor":
             dataset = Coauthor(path, name=name, transform=transform)
+        elif tgm_type == "RelLinkPredDataset":
+            dataset = RelLinkPredDataset(path, name="FB15k-237", transform=transform)
         elif tgm_type == "LastFMAsia":
             dataset = LastFMAsia(path, transform=transform) 
         elif tgm_type == "GitHub":

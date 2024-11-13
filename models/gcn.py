@@ -3,7 +3,7 @@ from sklearn.metrics import roc_auc_score
 
 import torch_geometric.transforms as T
 from torch_geometric.datasets import Planetoid
-from torch_geometric.nn import GCNConv, GATConv, SuperGATConv
+from torch_geometric.nn import GCNConv, GATConv, SuperGATConv, SAGEConv
 from torch_geometric.utils import negative_sampling
 
 class Net(torch.nn.Module):
@@ -34,8 +34,14 @@ class GATNet(Net):
 class SuperGATNet(Net):
     def __init__(self, in_channels, hidden_channels, out_channels):
         super().__init__(in_channels, hidden_channels, out_channels)
-        self.conv1 = SuperGATNet(in_channels, hidden_channels)
-        self.conv2 = SuperGATNet(hidden_channels, out_channels)
+        self.conv1 = SuperGATConv(in_channels, hidden_channels)
+        self.conv2 = SuperGATConv(hidden_channels, out_channels)
+
+class GraphSAGENet(Net):
+    def __init__(self, in_channels, hidden_channels, out_channels):
+        super().__init__(in_channels, hidden_channels, out_channels)
+        self.conv1 = SAGEConv(in_channels, hidden_channels)
+        self.conv2 = SAGEConv(hidden_channels, out_channels)
 
 
 # used for SEAL 

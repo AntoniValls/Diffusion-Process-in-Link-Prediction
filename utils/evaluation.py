@@ -15,6 +15,7 @@ from collections import defaultdict
 from sklearn.metrics import roc_auc_score, f1_score, recall_score, precision_score, accuracy_score
 from utils.metrics import vcmpr_OG, vcmpr_IB_min, vcmpr_BJ, vcmpr_IB_max
 from utils.data_utils import data_loader, read_prediction_files
+import cmocean.cm as cmo 
 
 """
 Bjorn: "The classes below are not the best structure. One thing I could do however, 
@@ -320,22 +321,45 @@ def evaluate_all(model_name, list_of_data, method_list, method_names):
 #                         More efficient way to do it                                     #
 ###########################################################################################
 def get_centrality_df(G, list_of_methods, method_names):
-
+    """
+    Calculate centrality measures and node degrees for a graph.
+    
+    Parameters:
+    -----------
+    G : networkx.Graph
+        The input graph
+    list_of_methods : list
+        List of centrality calculation functions from networkx
+    method_names : list
+        Names for each centrality method
+    
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame containing node indices, degrees, and normalized centrality measures
+    """
+    # Calculate centralities
     results = []
-
     for method in list_of_methods:
         method_result = method(G)
         if isinstance(method_result, dict):
             results.append(method_result)
         else:
             raise ValueError(f"Error: The centrality '{method}' is not returning a dict object.")
-            
+    
+    # Create DataFrame with centralities
     df = pd.DataFrame(results).T
-
     df.columns = method_names
-    # normalize with sd
-    df = df / df.std()
-
+    
+    # Add degree for each node
+    degrees = dict(G.degree())
+    df['degree'] = pd.Series(degrees)
+    
+    # Normalize with standard deviation
+    columns_to_normalize = method_names  # Only normalize centrality measures, not degree
+    df[columns_to_normalize] = df[columns_to_normalize] / df[columns_to_normalize].std()
+    
+    # Reset index and rename it to node_index
     return df.reset_index(names="node_index")
 
 def graph_level_topologies(G, centrality_df):
@@ -375,13 +399,17 @@ def nodes_and_graph_properties(tgm_type, data_name, method_list, method_names, s
     """
     dataset = data_loader(tgm_type=tgm_type, name=data_name, transform=None)
     G = torch_geometric.utils.to_networkx(dataset[0])
-    G = G.to_undirected()
+    G = G.to_undirected() # in case it is not
     result = get_centrality_df(G, method_list, method_names)
 
     # Compute graph-level properties
     graph_properties = graph_level_topologies(G, result)
 
     if save:
+        # Create directories if they do not exist
+        os.makedirs('data/node_level_centralities', exist_ok=True)
+        os.makedirs('data/graph_level_properties', exist_ok=True)
+
         result.to_csv(f'data/node_level_centralities/{data_name}.csv', index=False)
         pd.DataFrame([graph_properties]).to_json(f'data/graph_level_properties/{data_name}.json', orient='records')
 
@@ -416,47 +444,39 @@ def graph_level_plot(list_of_datasets, plot=True):
     df = pd.DataFrame(data_list)
 
     if plot:
+        sns.color_palette("tab10")
         # Create subplots for Average Degree and Clustering Coefficient
-        fig, axes = plt.subplots(1, 2, figsize=(16, 6), sharey=False)
+        fig = plt.figure(figsize=(16, 16))
+        grid = plt.GridSpec(2, 2)
+        ax1 = fig.add_subplot(grid[:1, :1])
+        ax2 = fig.add_subplot(grid[:1, 1:])
+        ax3 = fig.add_subplot(grid[1:, :])
         
         # Plot Average Degree
-        df.plot(kind='bar', x='Dataset', y='Average_Degree', ax=axes[0], color='skyblue', legend=False)
-        axes[0].set_title("Average Degree for Each Dataset")
-        axes[0].set_ylabel("Value")
-        axes[0].set_xticklabels(df["Dataset"], rotation=0)
-        axes[0].grid(axis='y')
+        df.plot(kind='bar', x='Dataset', y='Average_Degree', ax=ax1, color = cmo.deep(np.linspace(0, 1, 5)), legend=False)
+        ax1.set_title("Average Degree for Each Dataset")
+        ax1.set_ylabel("Value")
+        ax1.set_xticklabels(df["Dataset"], rotation=0)
+        ax1.grid(axis='y')
         
         # Plot Clustering Coefficient
-        df.plot(kind='bar', x='Dataset', y='Clustering_Coefficient', ax=axes[1], color='salmon', legend=False)
-        axes[1].set_title("Clustering Coefficient for Each Dataset")
-        axes[1].set_xticklabels(df["Dataset"], rotation=0)
-        axes[1].set_ylim([0,1])
-        axes[1].grid(axis='y')
-        
-        # Adjust layout and show the plot
-        plt.tight_layout()
-        plt.show()
+        df.plot(kind='bar', x='Dataset', y='Clustering_Coefficient', ax=ax2, color = cmo.deep(np.linspace(0, 1, 5)), legend=False)
+        ax2.set_title("Clustering Coefficient for Each Dataset")
+        ax2.set_xticklabels(df["Dataset"], rotation=0)
+        ax2.set_ylim([0,1])
+        ax2.grid(axis='y')
         
         # Plot bar plots for Gini indices of centrality measures
         df_melted = df.melt(id_vars=["Dataset"], value_vars=[f"Gini_{col}" for col in properties[0]["Gini_Indices"].keys()],
                             var_name="Centrality Measure", value_name="Gini Index")
         
-        plt.figure(figsize=(14, 8))
-        sns.barplot(data=df_melted, x="Dataset", y="Gini Index", hue="Centrality Measure")
-        plt.title("Gini Indices of Centrality Measures for Each Dataset")
-        plt.ylabel("Gini Index")
-        plt.grid(axis='y')
-        plt.show()
+        sns.barplot(data=df_melted, x="Dataset", y="Gini Index", hue="Centrality Measure", ax=ax3)
+        ax3.set_title("Gini Indices of Centrality Measures for Each Dataset")
+        ax3.set_ylabel("Gini Index")
+        ax3.grid(axis='y')
         
-        # Scatter plot to explore relationships between Average Degree and Clustering Coefficient
-        plt.figure(figsize=(8, 6))
-        sns.scatterplot(data=df, x="Average_Degree", y="Clustering_Coefficient", hue="Dataset", s=100)
-        plt.title("Relationship between Average Degree and Clustering Coefficient")
-        plt.xlabel("Average Degree")
-        plt.ylabel("Clustering Coefficient")
-        plt.grid(True)
+        plt.savefig('images/gini.png', dpi=300, bbox_inches='tight')
         plt.show()
-
     return df
 
 def node_level_load(list_of_datasets):

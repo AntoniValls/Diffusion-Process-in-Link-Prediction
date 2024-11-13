@@ -11,6 +11,7 @@ from diffusion.contagion_models import si_simulation, threshold_diffusion
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
+from utils.evaluation import node_level_load, run_vcmpr
 
 def gini_coefficient(x):
     mad = np.abs(np.subtract.outer(x, x)).mean()
@@ -421,7 +422,7 @@ def size_and_rate(list_of_df):
     
     return pd.concat([overall_mean, std_dev_across_all_seeds])
     
-def diffusion_graph_metrics(model, contagion, dataset_list, prob, plot=True):
+def diffusion_graph_metrics(model, contagion, dataset_list, prob, plot=False):
     metrics_dict = {}
     for data_name in dataset_list:
         file_path = f"data/contagion/{model}/{contagion}/{data_name}_si_100_{str(prob)}.pkl"
@@ -477,8 +478,47 @@ def diffusion_graph_metrics(model, contagion, dataset_list, prob, plot=True):
             
     return df
 
+def diffusion_graph_metrics_all(list_of_models, contagion, dataset_list, prob, plot=False):
+    data = {}
+    for model in list_of_models:
+        data[model] = diffusion_graph_metrics(model, contagion, dataset_list, prob, plot=False)
+
+    if plot:
+        # Extract dataset names and metrics
+        datasets = data['gcn']['Dataset']
+        metrics = ['iterations_mean', 'infection_size_mean', 'infection_rate_mean']
+        
+        # Set up the subplots: 6 datasets x 3 metrics = 18 subplots
+        fig, axes = plt.subplots(nrows=len(datasets), ncols=len(metrics), figsize=(15, 15), sharey='col')
+        fig.tight_layout(pad=4.0)
+        
+        # Loop over each dataset and metric to create individual subplots
+        for i, dataset in enumerate(datasets):
+            for j, metric in enumerate(metrics):
+                ax = axes[i, j]
+                
+                # Gather data for each model (gcn, gat) for the current dataset and metric
+                for model in data:
+                    true_value = data[model].loc[data[model]['Dataset'] == dataset, f"{metric}_true"].values[0]
+                    pred_value = data[model].loc[data[model]['Dataset'] == dataset, f"{metric}_pred"].values[0]
+                    
+                    # Plot true and predicted values for the current model
+                    ax.plot([model], [true_value], 'bo', label='True' if model == 'gcn' else "")
+                    ax.plot([model], [pred_value], 'ro', label='Predicted' if model == 'gcn' else "")
+                
+                # Customize each subplot
+                ax.set_title(f"{dataset} - {metric.replace('_mean', '')}")
+                ax.set_xlabel("Model")
+                if j == 0:
+                    ax.set_ylabel("Value")
+                if i == 0 and j == len(metrics) - 1:
+                    ax.legend()
+        
+        plt.show()
+    return data
+        
 # Diffusion node-level metrics
-def diffusion_node_metrics(model, contagion, dataset_list, prob, plot=True):
+def diffusion_node_metrics(model, contagion, dataset_list, prob):
     metrics_dict = {}
     for data_name in dataset_list:
         file_path = f"data/contagion/{model}/{contagion}/{data_name}_si_100_{str(prob)}.pkl"
@@ -494,3 +534,65 @@ def diffusion_node_metrics(model, contagion, dataset_list, prob, plot=True):
 
         metrics_dict[f"{data_name}"] = mean_df
     return metrics_dict
+
+def diffusion_node_metrics_all(model_list, contagion, dataset_list, prob, plot=True):
+    dicto = {}
+    for model in model_list:
+        node_metrics = diffusion_node_metrics(model, contagion, dataset_list, prob)
+        centralities = node_level_load(dataset_list)
+        vcmpr, k = run_vcmpr(model, dataset_list, def_k=5)
+
+        merged_dict = {}
+        # Iterate over the keys and merge the corresponding dataframes
+        for key in node_metrics.keys():
+            merged_dict[key] = pd.merge(node_metrics[key], centralities[key], on="node_index")
+            merged_dict[key] = pd.merge(merged_dict[key], vcmpr[key], on="node_index")
+
+        dicto[model] = merged_dict
+    return dicto
+
+def plot_diffusion_node_metrics_dict(data):
+    '''
+    Data is a dictionary of dictionaries
+    '''
+
+    models = list(data.keys())  # Example: ['gcn', 'gat', ...]
+    datasets = list(data[models[0]].keys())  # Example: ['Cora', 'CiteSeer', ...]
+    metrics = ['vulnerability_diff', 'recency_diff']
+    
+    # Plot settings
+    num_metrics = len(metrics)
+    num_datasets = len(datasets)
+    fig, axes = plt.subplots(num_datasets, num_metrics, figsize=(5 * num_metrics, 5 * num_datasets))
+    fig.suptitle("Node Score Distributions Across Models", fontsize=16)
+    
+    # Loop through each dataset and metric to create subplots
+    for i, dataset in enumerate(datasets):
+        for j, metric in enumerate(metrics):
+            ax = axes[i, j] if num_datasets > 1 else axes[j]  # Handle single row/column case
+    
+            # Collect the data for all models for this metric and dataset
+            combined_data = []
+            for model in models:
+                # Add a column to identify the model
+                model_data = data[model][dataset][['node_index', metric]].copy()
+                model_data['Model'] = model
+                combined_data.append(model_data)
+            
+            # Concatenate data from all models
+            plot_data = pd.concat(combined_data, ignore_index=True)
+    
+            # Create the violin plot for the current dataset and metric
+            sns.violinplot(data=plot_data, x="Model", y=metric, ax=ax, hue="Model", palette="Set2", inner="box")
+    
+            # Set the plot title and labels
+            ax.set_title(f"{dataset} - {metric.replace('_', ' ').title()}", fontsize=12)
+            ax.set_xlabel("Model")
+            ax.set_ylabel(metric.replace('_', ' ').title())
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.show()
+
+
+    
+    

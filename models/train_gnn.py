@@ -1,4 +1,4 @@
-from models.gcn import Net, GATNet, SuperGATNet, GCN
+from models.gcn import Net, GATNet, SuperGATNet, GCN, GraphSAGENet
 import torch
 import os.path as osp
 
@@ -14,14 +14,20 @@ from utils.utils import EarlyStopper
 from torch_geometric import seed_everything
 
 
-def train_and_predict(model_name, train_data, val_data, test_data, n_features, device, epochs, args=None, seed=42):
+def train_and_predict(model_name, train_data, val_data, test_data, n_features, device, epochs, args=None, seed=42, printer=False):
+    
     seed_everything(seed)
     if model_name == "gcn":
         model = Net(n_features, 128, 64).to(device)
     elif model_name == "gat":
         model = GATNet(n_features, 128, 64).to(device)
+    elif model_name == "supergat":
+        model = SuperGATNet(n_features, 128, 64).to(device)
+    elif model_name == "sage":
+        model = GraphSAGENet(n_features, 128, 64).to(device)
+    
     else:
-        raise TypeError("Invalid model: only gcn, gat or seal") 
+        raise TypeError("Invalid model: only gcn, gat, supergat, sage or seal") 
     
     optimizer = torch.optim.Adam(params=model.parameters(), lr=0.01)
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -68,13 +74,13 @@ def train_and_predict(model_name, train_data, val_data, test_data, n_features, d
         if val_auc > best_val_auc:
             best_val_auc = val_auc
             final_test_auc = test_auc
-        print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Val: {val_auc:.4f}, '
-              f'Test: {test_auc:.4f}')
+        if printer:
+            print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Val: {val_auc:.4f}, 'f'Test: {test_auc:.4f}')
         if early_stopper.early_stop_score(val_auc):
             break
 
     print(f'Final Test: {final_test_auc:.4f}')        
-        
+    
     z = model.encode(test_data.x, test_data.edge_index)
     test_predictions = model.decode(z, test_data.edge_label_index).view(-1).sigmoid().detach().cpu().numpy()
     test_label = test_data.edge_label.cpu().numpy()
@@ -88,8 +94,7 @@ def train_and_predict(model_name, train_data, val_data, test_data, n_features, d
     #TODO: We need the edge indices also for the negative ones, I'm stupid!
     #positive_test_edges = test_data.edge_label_index[:, test_data.edge_label == 1].cpu().numpy()
     all_test_edges = test_data.edge_label_index.cpu().numpy()
-
-
+        
     del model
     del optimizer
     del criterion
