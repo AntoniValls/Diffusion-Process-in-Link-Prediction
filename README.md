@@ -1,0 +1,9 @@
+This project investigates the influence of Graph Neural Network (GNN)-based link prediction (LP) models on social contagion dynamics across diverse network structures. By analyzing the predicted network connections, node-level centrality measures, and graph-level topological metrics, we explore how these LP models affect both simple and complex contagion processes, which are central to understanding information spread in real-world systems. Our findings demonstrate that LP models actively reshape network structures, introducing shortcuts or targeting influential nodes, which in turn enhance, accelerate, or localize information diffusion depending on network topology, such as average degree, clustering coefficient, and centrality distributions.
+
+By systematically evaluating multiple GNN-based LP models across varied datasets, this work highlights the nuanced interplay between LP methods, network properties, and diffusion behaviors. It reveals that certain LP models, like attention-based architectures, facilitate broader and faster propagation, while others, such as Graph Convolutional Networks (GCNs), tend to form localized clusters that constrain diffusion under specific conditions. These insights provide a deeper understanding of how network prediction algorithms influence the reach, speed, and susceptibility of information flow. By bridging gaps in the existing literature, this study offers a comprehensive perspective on LP's role in shaping social dynamics and contributes valuable knowledge to both the network science and diffusion modeling communities.
+
+This work was presented as part of my final thesis for the Data Science master's degree at the University of Padua.
+
+You can access the full report here: [Full Report](https://github.com/user-attachments/files/18163886/Master_Thesis-FinalVersion.pdf)
+The thesis presentation is available here: [Presentation](https://github.com/user-attachments/files/18163900/Thesis.Defense-4.pdf)
+
