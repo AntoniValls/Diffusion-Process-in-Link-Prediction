@@ -1,4 +1,4 @@
-
+# Exploring the Influence of Graph Neural Network-Based Link Prediction on Social Contagion Dynamics
 
 This project investigates the influence of Graph Neural Network (GNN)-based link prediction (LP) models on social contagion dynamics across diverse network structures. By analyzing the predicted network connections, node-level centrality measures, and graph-level topological metrics, we explore how these LP models affect both simple and complex contagion processes, which are central to understanding information spread in real-world systems. Our findings demonstrate that LP models actively reshape network structures, introducing shortcuts or targeting influential nodes, which in turn enhance, accelerate, or localize information diffusion depending on both network topology - such as average degree, clustering coefficient, and centrality distributions - and node's centralities - such as complex path centrality, and betweenness centrality.
 
