@@ -421,6 +421,7 @@ def graph_level_plot(list_of_datasets, plot=True):
     """
     data_path = "data/graph_level_properties"
     datasets = []
+    
     for data in list_of_datasets:
         datasets.append(data + ".json")
     
@@ -446,7 +447,7 @@ def graph_level_plot(list_of_datasets, plot=True):
     if plot:
         sns.color_palette("tab10")
         # Create subplots for Average Degree and Clustering Coefficient
-        fig = plt.figure(figsize=(16, 16))
+        fig = plt.figure(figsize=(18, 15))
         grid = plt.GridSpec(2, 2)
         ax1 = fig.add_subplot(grid[:1, :1])
         ax2 = fig.add_subplot(grid[:1, 1:])
@@ -454,25 +455,46 @@ def graph_level_plot(list_of_datasets, plot=True):
         
         # Plot Average Degree
         df.plot(kind='bar', x='Dataset', y='Average_Degree', ax=ax1, color = cmo.deep(np.linspace(0, 1, 5)), legend=False)
-        ax1.set_title("Average Degree for Each Dataset")
-        ax1.set_ylabel("Value")
-        ax1.set_xticklabels(df["Dataset"], rotation=0)
+        ax1.set_title("Average Degree for Each Dataset", fontsize=15)
+        ax1.set_ylabel("")
+        ax1.set_xlabel("")
+        ax1.set_xticklabels(["Cora", "CiteSeer", "Facebook", "Wikipedia", "Twitch ES", "LastFMAsia"], fontsize=14, rotation=0)
         ax1.grid(axis='y')
         
         # Plot Clustering Coefficient
         df.plot(kind='bar', x='Dataset', y='Clustering_Coefficient', ax=ax2, color = cmo.deep(np.linspace(0, 1, 5)), legend=False)
-        ax2.set_title("Clustering Coefficient for Each Dataset")
-        ax2.set_xticklabels(df["Dataset"], rotation=0)
+        ax2.set_title("Clustering Coefficient for Each Dataset", fontsize=15)
+        ax2.set_xticklabels(["Cora", "CiteSeer", "Facebook", "Wikipedia", "Twitch ES", "LastFMAsia"], fontsize=14, rotation=0)
+        ax2.set_xlabel("")
         ax2.set_ylim([0,1])
         ax2.grid(axis='y')
         
         # Plot bar plots for Gini indices of centrality measures
         df_melted = df.melt(id_vars=["Dataset"], value_vars=[f"Gini_{col}" for col in properties[0]["Gini_Indices"].keys()],
                             var_name="Centrality Measure", value_name="Gini Index")
+
+        # Create a colormap using cmocean
+        colors = cmo.thermal(np.linspace(0, 1, df_melted["Centrality Measure"].nunique()))
         
-        sns.barplot(data=df_melted, x="Dataset", y="Gini Index", hue="Centrality Measure", ax=ax3)
-        ax3.set_title("Gini Indices of Centrality Measures for Each Dataset")
-        ax3.set_ylabel("Gini Index")
+        # Map the colors to the centrality measures
+        centrality_measures = df_melted["Centrality Measure"].unique()
+        color_mapping = dict(zip(centrality_measures, colors))
+        
+        # Create a bar plot
+        sns.barplot(
+            data=df_melted, 
+            x="Dataset", 
+            y="Gini Index", 
+            hue="Centrality Measure", 
+            ax=ax3, 
+            palette=color_mapping
+        )
+
+        # Set plot aesthetics
+        ax3.set_title("Gini Indices of Centrality Measures for Each Dataset", fontsize=15)
+        ax3.set_ylabel("Gini Index", fontsize=14)
+        ax3.set_xlabel(" ")
+        ax3.set_xticklabels(["Cora", "CiteSeer", "Facebook", "Wikipedia", "Twitch ES", "LastFMAsia"], fontsize=14, rotation=0)
         ax3.grid(axis='y')
         
         plt.savefig('images/gini.png', dpi=300, bbox_inches='tight')
